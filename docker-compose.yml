@@ -1,7 +1,7 @@
 
 services: 
   whisper_app_test:
-    image: dso-nexus.vietinbank.vn/ai_docker/python311_openai_serve:v5.06
+    image: python311_openai_serve:v5.06
     container_name: whisper_app_test
     # restart: always
     # command: 'sleep infinity'

@@ -1,0 +1,11 @@
+pydub
+openai
+sqlmodel
+requests
+sqlalchemy
+aiohttp
+httpx
+pypandoc
+psycopg2-binary
+python-dotenv
+Werkzeug

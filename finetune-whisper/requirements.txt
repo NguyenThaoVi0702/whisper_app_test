@@ -1,0 +1,12 @@
+transformers
+datasets
+torch
+torchaudio
+soundfile
+libsndfile1
+librosa
+evaluate
+jiwer
+ctranslate2
+faster-whisper
+huggingface-hub

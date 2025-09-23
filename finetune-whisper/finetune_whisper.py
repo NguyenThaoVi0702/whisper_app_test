@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
+import glob  # ### NEW ### Import the glob library to find files
 
 import torch
 import evaluate
@@ -13,37 +14,60 @@ from transformers import (
 )
 
 # --- 1. Define Paths and Model Details ---
-MODEL_PATH = "merged_model_dir"  # Path to your local model directory
-DATASET_PATH = "viet_bud500_dataset"  # Path to your local dataset directory
+MODEL_PATH = "merged_model_dir"
+# ### NEW ### Path to the top-level dataset folder
+DATASET_PATH = "viet_bud500"
 OUTPUT_DIR = "./whisper-finetuned-vi"
 LANGUAGE = "Vietnamese"
 TASK = "transcribe"
 
 # --- 2. Load Processor, Feature Extractor, and Tokenizer ---
-# The processor combines the feature extractor and tokenizer
 processor = WhisperProcessor.from_pretrained(MODEL_PATH)
 feature_extractor = processor.feature_extractor
 tokenizer = processor.tokenizer
 
 # --- 3. Load and Prepare the Dataset ---
-# This assumes your dataset is structured for the `datasets` library to load
-# It will resample the audio to the required 16kHz
-dataset = load_dataset(DATASET_PATH)
+
+# ### NEW ### - This whole section is updated to handle the Parquet file structure
+# Point to the directory containing the Parquet files
+parquet_dir = os.path.join(DATASET_PATH, "data")
+
+# Create lists of files for each split using glob
+train_files = glob.glob(f"{parquet_dir}/train-*.parquet")
+test_files = glob.glob(f"{parquet_dir}/test-*.parquet")
+validation_files = glob.glob(f"{parquet_dir}/validation-*.parquet")
+
+# Create a dictionary telling `load_dataset` where to find the files for each split
+data_files = {
+    "train": train_files,
+    "test": test_files,
+    "validation": validation_files,
+}
+
+# Load the dataset from the Parquet files
+# The first argument 'parquet' tells the library what kind of files to expect.
+dataset = load_dataset('parquet', data_files=data_files)
+
+print("Dataset loaded successfully:")
+print(dataset)
+# ### END OF NEW SECTION ###
+
+# This part remains the same
 dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
 
 def prepare_dataset(batch):
-    # Process audio to log-mel spectrogram
     audio = batch["audio"]
     batch["input_features"] = feature_extractor(audio["array"], sampling_rate=audio["sampling_rate"]).input_features[0]
-
-    # Tokenize the transcriptions
     batch["labels"] = tokenizer(batch["sentence"], language=LANGUAGE, task=TASK).input_ids
     return batch
 
-dataset = dataset.map(prepare_dataset, remove_columns=dataset.column_names["train"], num_proc=1)
+# You have train, validation, and test splits, so map all of them
+dataset["train"] = dataset["train"].map(prepare_dataset, remove_columns=dataset["train"].column_names, num_proc=1)
+dataset["test"] = dataset["test"].map(prepare_dataset, remove_columns=dataset["test"].column_names, num_proc=1)
+dataset["validation"] = dataset["validation"].map(prepare_dataset, remove_columns=dataset["validation"].column_names, num_proc=1)
+
 
 # --- 4. Define a Data Collator ---
-# This class handles padding for the input features and labels
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
@@ -51,17 +75,11 @@ class DataCollatorSpeechSeq2SeqWithPadding:
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         input_features = [{"input_features": feature["input_features"]} for feature in features]
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
-
         label_features = [{"input_ids": feature["labels"]} for feature in features]
         labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
-
-        # Replace padding with -100 to ignore in loss computation
         labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
-
-        # Handle cases where the model starts with a bos token
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
-
         batch["labels"] = labels
         return batch
 
@@ -73,14 +91,9 @@ metric = evaluate.load("wer")
 def compute_metrics(pred):
     pred_ids = pred.predictions
     label_ids = pred.label_ids
-
-    # Replace -100 with the pad token ID
     label_ids[label_ids == -100] = tokenizer.pad_token_id
-
-    # Decode predictions and labels
     pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
     label_str = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
-
     wer = 100 * metric.compute(predictions=pred_str, references=label_str)
     return {"wer": wer}
 
@@ -118,7 +131,8 @@ trainer = Seq2SeqTrainer(
     args=training_args,
     model=model,
     train_dataset=dataset["train"],
-    eval_dataset=dataset["test"],
+    # ### Best Practice ###: Use the 'validation' split for evaluation during training
+    eval_dataset=dataset["validation"],
     data_collator=data_collator,
     compute_metrics=compute_metrics,
     tokenizer=processor.feature_extractor,

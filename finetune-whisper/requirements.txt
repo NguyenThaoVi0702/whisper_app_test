@@ -1,14 +1,20 @@
+# Transformers and PEFT
 transformers
+peft
+accelerate
+bitsandbytes
+
+# Datasets and Audio
 datasets
-# torch and torchaudio are in the base image
 soundfile
-libsndfile1
 librosa
 evaluate
 jiwer
-# For LoRA / QLoRA
-peft
-bitsandbytes
-accelerate
-# For data loading from .xlsx if you ever need it
-openpyxl
+
+# Conversion
+ctranslate2
+faster-whisper
+huggingface-hub
+
+# For data loading from Parquet
+pyarrow

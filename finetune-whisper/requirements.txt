@@ -1,12 +1,14 @@
 transformers
 datasets
-torch
-torchaudio
+# torch and torchaudio are in the base image
 soundfile
 libsndfile1
 librosa
 evaluate
 jiwer
-ctranslate2
-faster-whisper
-huggingface-hub
+# For LoRA / QLoRA
+peft
+bitsandbytes
+accelerate
+# For data loading from .xlsx if you ever need it
+openpyxl

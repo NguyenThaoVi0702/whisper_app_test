@@ -1,61 +1,86 @@
 import os
 import glob
-from dataclasses import dataclass
-
 import torch
-import datasets as hugDS
+from dataclasses import dataclass
+from typing import Any, Dict, List, Union
+
+from datasets import load_dataset, Audio
 from transformers import (
     WhisperForConditionalGeneration,
     WhisperProcessor,
-    Seq2SeqTrainingArguments,
     Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    BitsAndBytesConfig
 )
+from peft import prepare_model_for_kbit_training, LoraConfig, get_peft_model
 
-# --- 1. Configuration ---
-# Your already fine-tuned model is the new base model
-MODEL_PATH = "./merged_model_ct2_dir"
-DATASET_PATH = "./viet_bud500"
-# The output will be a new, fully updated model
-OUTPUT_DIR = "./fully-finetuned-model-v2"
+# --- 1. Define Paths and Configuration ---
+# This is your STARTING model directory
+BASE_MODEL_PATH = "merged_model_ct2_dir"
+DATASET_PATH = "viet_bud500"
+# This is where the NEW adapter weights will be saved
+LORA_ADAPTER_OUTPUT_DIR = "./new-lora-adapters"
 
-# --- 2. Load Model and Processor ---
-# This is much simpler now. Load everything directly from your merged model directory.
-print(f"Loading model and processor from: {MODEL_PATH}")
-model = WhisperForConditionalGeneration.from_pretrained(MODEL_PATH, device_map="auto")
-processor = WhisperProcessor.from_pretrained(MODEL_PATH)
-feature_extractor = processor.feature_extractor
+LANGUAGE = "Vietnamese"
+TASK = "transcribe"
+SAMPLING_RATE = 16000
+
+# --- 2. Load Processor from the Base Model ---
+# The processor contains the tokenizer and feature extractor
+processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language=LANGUAGE, task=TASK)
 tokenizer = processor.tokenizer
+feature_extractor = processor.feature_extractor
 
-# --- 3. Load and Prepare the viet_bud500 Dataset ---
-print(f"Loading viet_bud500 dataset from: {DATASET_PATH}")
+# --- 3. Load and Prepare the Dataset ---
 parquet_dir = os.path.join(DATASET_PATH, "data")
-train_files = glob.glob(f"{parquet_dir}/train-*.parquet")
-validation_files = glob.glob(f"{parquet_dir}/validation-*.parquet")
-
 data_files = {
-    "train": train_files,
-    "validation": validation_files,
+    "train": glob.glob(f"{parquet_dir}/train-*.parquet"),
+    "validation": glob.glob(f"{parquet_dir}/validation-*.parquet"),
 }
-dataset = hugDS.load_dataset('parquet', data_files=data_files)
-dataset = dataset.cast_column("audio", hugDS.Audio(sampling_rate=16000))
+dataset = load_dataset('parquet', data_files=data_files).cast_column("audio", Audio(sampling_rate=SAMPLING_RATE))
+print("Dataset loaded:", dataset)
 
 def prepare_dataset(batch):
     audio = batch["audio"]
-    batch["input_features"] = feature_extractor(audio["array"], sampling_rate=16000).input_features[0]
+    batch["input_features"] = feature_extractor(audio["array"], sampling_rate=audio["sampling_rate"]).input_features[0]
     batch["labels"] = tokenizer(batch["transcription"]).input_ids
     return batch
 
-print("Processing dataset...")
-processed_dataset = dataset.map(prepare_dataset, remove_columns=dataset["train"].column_names)
+dataset = dataset.map(prepare_dataset, remove_columns=dataset["train"].column_names, num_proc=1)
 
-# --- 4. Define Data Collator ---
+# --- 4. Load Model with 4-bit Quantization (QLoRA) ---
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16,
+    bnb_4bit_use_double_quant=True,
+)
+model = WhisperForConditionalGeneration.from_pretrained(
+    BASE_MODEL_PATH,
+    quantization_config=bnb_config,
+    device_map="auto"
+)
+model = prepare_model_for_kbit_training(model)
+
+# --- 5. Configure LoRA Adapters ---
+lora_config = LoraConfig(
+    r=32,
+    lora_alpha=64,
+    target_modules=["q_proj", "v_proj"],
+    lora_dropout=0.05,
+    bias="none",
+)
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()
+
+# --- 6. Define Data Collator ---
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
-    processor: any
-    def __call__(self, features):
+    processor: Any
+    def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         input_features = [{"input_features": feature["input_features"]} for feature in features]
-        label_features = [{"input_ids": feature["labels"]} for feature in features]
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
+        label_features = [{"input_ids": feature["labels"]} for feature in features]
         labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
         labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
@@ -65,37 +90,41 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
 data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
-# --- 5. Define Training Arguments ---
-# IMPORTANT: Use a much smaller learning rate for full fine-tuning
+# --- 7. Define Training Arguments ---
 training_args = Seq2SeqTrainingArguments(
-    output_dir=OUTPUT_DIR,
+    output_dir=LORA_ADAPTER_OUTPUT_DIR,
     per_device_train_batch_size=8,
-    gradient_accumulation_steps=2, # Accumulate gradients to simulate a larger batch size
-    learning_rate=1e-6, # CRITICAL: Very low learning rate
-    warmup_steps=50,
-    max_steps=1000,
-    fp16=True,
+    gradient_accumulation_steps=2,
+    learning_rate=5e-6,
+    warmup_steps=500,
+    max_steps=4000,
+    gradient_checkpointing=True,
+    fp16=True, # For A100, bf16=True is also a great option
     evaluation_strategy="steps",
-    eval_steps=200,
-    save_steps=200,
+    per_device_eval_batch_size=8,
+    save_steps=1000,
+    eval_steps=1000,
     logging_steps=25,
-    save_total_limit=3,
     report_to=["tensorboard"],
+    load_best_model_at_end=True,
+    metric_for_best_model="wer",
+    greater_is_better=False,
+    remove_unused_columns=False, # Important for PEFT
+    label_names=["labels"], # Important for PEFT
+    optim="adamw_bnb_8bit",
 )
 
-# --- 6. Create and Run the Trainer ---
+# --- 8. Create Trainer and Start Training ---
 trainer = Seq2SeqTrainer(
     args=training_args,
     model=model,
-    train_dataset=processed_dataset["train"],
-    eval_dataset=processed_dataset["validation"],
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["validation"],
     data_collator=data_collator,
     tokenizer=processor.feature_extractor,
 )
-
-print("Starting FULL fine-tuning from merged model...")
 trainer.train()
 
-print("Training complete.")
+# --- 9. Save the Final Adapter Weights ---
+print(f"Saving final adapter weights to {LORA_ADAPTER_OUTPUT_DIR}")
 trainer.save_model()
-print(f"New fully fine-tuned model saved to: {OUTPUT_DIR}")

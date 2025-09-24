@@ -1,11 +1,3 @@
- => ERROR [internal] load metadata for docker.io/pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime                                                                                                          10.0s
-------
- > [internal] load metadata for docker.io/pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime:
-------
-Dockerfile:1
---------------------
-   1 | >>> FROM pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
-   2 |
-   3 |
---------------------
-ERROR: failed to solve: pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime: failed to resolve source metadata for docker.io/pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime: failed to do request: Head "https://registry-1.docker.io/v2/pytorch/pytorch/manifests/2.6.0-cuda12.6-cudnn9-runtime": dial tcp: lookup registry-1.docker.io on 10.0.34.10:53: read udp 10.2.145.205:37031->10.0.34.10:53: i/o timeout
+ubuntu@dr-bigdata-aiml-03:~$ ls "/u01/user-data/tuanta3/finetune_whisper/merged_model_ct2_dir/"
+added_tokens.json  generation_config.json  model.bin        preprocessor_config.json  tokenizer_config.json  vocab.json
+config.json        merges.txt              normalizer.json  special_tokens_map.json   tokenizer.json         vocabulary.json

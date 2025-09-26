@@ -1,1 +1,1 @@
- -v "$(pwd)/.cache:/root/.cache/huggingface/datasets"
+-v "$(pwd)/.cache":"/root/.cache"

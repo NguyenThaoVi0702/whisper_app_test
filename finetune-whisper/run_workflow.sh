@@ -4,77 +4,77 @@
 set -e
 
 # --- Configuration ---
-IMAGE_NAME="whisper-lora-finetuner"
+EXISTING_IMAGE_NAME="dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora:v2"
+MIG_DEVICE_UUID="PASTE_YOUR_MIG_UUID_HERE" # Make sure this is set correctly
+
+# --- Container Names ---
 FINETUNE_CONTAINER_NAME="lora-finetuning-job"
 MERGE_CONTAINER_NAME="lora-merging-job"
 CONVERT_CONTAINER_NAME="ct2-conversion-job"
-GPU_INDEX=0
 
 # --- Workflow Steps ---
 
-echo "======================================================"
-echo " STEP 1: Building the Docker image... "
-echo "======================================================"
-docker build -t "$IMAGE_NAME" .
+# Check if the user has changed the UUID
+if [ "$MIG_DEVICE_UUID" == "PASTE_YOUR_MIG_UUID_HERE" ]; then
+  echo "!!! ERROR: Please edit this script and set the 'MIG_DEVICE_UUID' variable."
+  exit 1
+fi
 
-echo ""
 echo "======================================================"
-echo " STEP 2: Starting the LoRA fine-tuning process... "
+echo " STEP 1: Starting LoRA fine-tuning..."
 echo "======================================================"
-echo "Container will run in the background. To monitor progress, run:"
-echo "docker logs -f $FINETUNE_CONTAINER_NAME"
-echo ""
 
 docker run \
   -d \
   --name "$FINETUNE_CONTAINER_NAME" \
-  --gpus "\"device=$GPU_INDEX\"" \
+  --gpus all \
+  -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
   -v "$(pwd)":/app \
-  "$IMAGE_NAME" \
+  -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
+  "$EXISTING_IMAGE_NAME" \
   python3 finetune_lora.py
 
-echo "Waiting for fine-tuning to complete. This may take a long time..."
+echo "Waiting for fine-tuning to complete..."
 docker wait "$FINETUNE_CONTAINER_NAME"
 echo "Fine-tuning has finished."
 docker rm "$FINETUNE_CONTAINER_NAME"
 
 echo ""
 echo "======================================================"
-echo " STEP 3: Merging the trained adapter into the model... "
+echo " STEP 2: Merging the trained adapter..."
 echo "======================================================"
 
 docker run \
   --name "$MERGE_CONTAINER_NAME" \
-  --gpus "\"device=$GPU_INDEX\"" \
+  --gpus all \
+  -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
   -v "$(pwd)":/app \
-  "$IMAGE_NAME" \
+  -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
+  "$EXISTING_IMAGE_NAME" \
   python3 merge_lora.py
 
 docker rm "$MERGE_CONTAINER_NAME"
 
-# ======================================================
-# <<< NEW STEP ADDED HERE >>>
-# ======================================================
 echo ""
 echo "======================================================"
-echo " STEP 4: Converting the merged model to CTranslate2... "
+echo " STEP 3: Converting the merged model to CTranslate2..."
 echo "======================================================"
 
 docker run \
   --name "$CONVERT_CONTAINER_NAME" \
-  --gpus "\"device=$GPU_INDEX\"" \
+  --gpus all \
+  -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
   -v "$(pwd)":/app \
-  "$IMAGE_NAME" \
+  -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
+  "$EXISTING_IMAGE_NAME" \
   python3 convert_to_ct2.py
 
 docker rm "$CONVERT_CONTAINER_NAME"
-# ======================================================
 
 echo ""
 echo "======================================================"
 echo " ENTIRE WORKFLOW COMPLETE! "
-echo " Your final, faster-whisper-ready model is in the 'faster-whisper-final-model' folder."
 echo "======================================================"

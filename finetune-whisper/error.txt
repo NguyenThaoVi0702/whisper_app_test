@@ -1,12 +1,23 @@
-ai_dev@ppe-nvidia-k8s-worker01:~$ dd if=/dev/zero of=/u01/user-data/vint1/finetune_whisper/testfile bs=1G count=1 oflag=direct
-1+0 records in
-1+0 records out
-1073741824 bytes (1,1 GB, 1,0 GiB) copied, 1,63383 s, 657 MB/s
-ai_dev@ppe-nvidia-k8s-worker01:~$ dd if=/dev/zero of=/tmp/testfile bs=1G count=1 oflag=direct
-1+0 records in
-1+0 records out
-1073741824 bytes (1,1 GB, 1,0 GiB) copied, 0,99343 s, 1,1 GB/s
-ai_dev@ppe-nvidia-k8s-worker01:~$
 
+ai_dev@ppe-nvidia-k8s-worker01:~$ docker logs -f lora-finetuning-job
 
+==========
+== CUDA ==
+==========
 
+CUDA Version 12.0.1
+
+Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+Loading adapter from ./my-whisper-medium-lora to continue training...
+Trainable parameters:
+trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+Downloading data: 100%|██████████| 105/105 [00:00<00:00, 18234.59files/s]
+Generating train split: 634158 examples [03:03, 3454.87 examples/s]
+Generating validation split: 7500 examples [00:02, 3468.03 examples/s]

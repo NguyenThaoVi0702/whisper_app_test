@@ -1,36 +1,22 @@
+training_args = Seq2SeqTrainingArguments(
+    output_dir=NEW_ADAPTER_SAVE_PATH,
+    per_device_train_batch_size=8,
+    gradient_accumulation_steps=1,
+    learning_rate=1e-5,
+    warmup_steps=50,
+    max_steps=1000,
+    fp16=True,
+    
+    # --- The Fix ---
+    do_eval=True,               # <<< ADD THIS LINE: Explicitly enable evaluation
+    eval_steps=200,             # Tell it to evaluate every 200 steps
+    save_steps=200,             # Tell it to save every 200 steps (now they match!)
+    # --- End of Fix ---
 
-ai_dev@ppe-nvidia-k8s-worker01:~$ docker logs -f lora-finetuning-job
-
-==========
-== CUDA ==
-==========
-
-CUDA Version 12.0.1
-
-Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-
-This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-By pulling and using the container, you accept the terms and conditions of this license:
-https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-
-A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-
-Loading adapter from ./my-whisper-medium-lora to continue training...
-Trainable parameters:
-trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
-Downloading data: 100%|██████████| 105/105 [00:00<00:00, 301232.50files/s]
-Generating train split: 634158 examples [03:00, 3508.22 examples/s]
-Generating validation split: 7500 examples [00:02, 3502.35 examples/s]
-Running mapping with proc = 1
-Map: 100%|██████████| 634158/634158 [1:49:52<00:00, 96.19 examples/s] ] ]
-Map: 100%|██████████| 7500/7500 [01:11<00:00, 104.27 examples/s]
-Traceback (most recent call last):
-  File "/app/finetune_lora.py", line 72, in <module>
-    training_args = Seq2SeqTrainingArguments(
-  File "<string>", line 137, in __init__
-  File "/usr/local/lib/python3.10/dist-packages/transformers/training_args.py", line 1648, in __post_init__
-    raise ValueError(
-ValueError: --load_best_model_at_end requires the save and eval strategy to match, but found
-- Evaluation strategy: no
-- Save strategy: steps
-
+    logging_steps=25,
+    report_to=["tensorboard"],
+    load_best_model_at_end=True,
+    greater_is_better=False,
+    remove_unused_columns=False,
+    label_names=["labels"],
+)

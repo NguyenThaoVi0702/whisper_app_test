@@ -10,40 +10,28 @@ from transformers import (
     Seq2SeqTrainingArguments,
     Seq2SeqTrainer,
 )
-from peft import PeftModel, LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training
 
 # --- 1. Define Paths and Configuration ---
 BASE_MODEL_PATH = "./model"
-# This is the adapter you already trained and want to continue training
 ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"
-DATASET_PATH = "./viet_bud500"
-# This is where the newly updated adapter will be saved
+DATASET_PATH = "/tmp/viet_bud500" # Using the fast, local storage
 NEW_ADAPTER_SAVE_PATH = "./my-whisper-medium-lora-continued"
 
 # --- 2. Load Model, Tokenizer, and Feature Extractor ---
 feature_extractor = WhisperFeatureExtractor.from_pretrained(BASE_MODEL_PATH)
 tokenizer = WhisperTokenizer.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
-model = WhisperForConditionalGeneration.from_pretrained(
-    BASE_MODEL_PATH, use_cache=False, device_map="auto"
-)
+model = WhisperForConditionalGeneration.from_pretrained(BASE_MODEL_PATH, use_cache=False, device_map="auto")
 
 # --- 3. Load and Prepare PEFT Model for Continued Training ---
-# Prepare the model for k-bit training (even if not using quantization, it's good practice for PEFT)
 model = prepare_model_for_kbit_training(model)
-
-print(f"Loading adapter from {ADAPTER_TO_CONTINUE_FROM} to continue training...")
-# Load the existing adapter and set it to trainable
 model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
-
-# Recommended: Enable gradient computation for the conv layers
 model.model.model.encoder.conv1.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
-
-print("Trainable parameters:")
 model.print_trainable_parameters()
 
 # --- 4. Load and Prepare the Dataset ---
 parquet_dir = os.path.join(DATASET_PATH, "data")
-data_files = {"train": glob.glob(f"{parquet_dir}/train-*.parquet"), "validation": glob.glob(f"{parquet_dir}/validation-*.parquet")}
+data_files = {"train": glob.glob(f"{parquet_dir}/train-*.parquet")} # We only need the train split for training
 dataset = load_dataset('parquet', data_files=data_files).cast_column("audio", Audio(sampling_rate=16000))
 
 def prepare_dataset(batch):
@@ -52,7 +40,8 @@ def prepare_dataset(batch):
     batch["labels"] = tokenizer(batch["transcription"]).input_ids
     return batch
 
-dataset = dataset.map(prepare_dataset, remove_columns=dataset.column_names["train"], num_proc=2)
+# Set num_proc=1 and let the tokenizer's internal parallelism work, as we know this is effective.
+dataset = dataset.map(prepare_dataset, remove_columns=dataset.column_names["train"], num_proc=1)
 
 # --- 5. Define Data Collator ---
 @dataclass
@@ -71,22 +60,22 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 data_collator = DataCollatorSpeechSeq2SeqWithPadding()
 
 # --- 6. Define Training Arguments ---
+# This block is now configured to match the logic of your working example script.
 training_args = Seq2SeqTrainingArguments(
     output_dir=NEW_ADAPTER_SAVE_PATH,
     per_device_train_batch_size=8,
     gradient_accumulation_steps=1,
-    learning_rate=1e-5, # Use a smaller learning rate for continued training
+    learning_rate=1e-5,
     warmup_steps=50,
-    max_steps=1000, # Set the number of additional steps
+    max_steps=1000,
     fp16=True,
-    evaluation_strategy="steps",
-    eval_steps=200,
+    # --- Evaluation is disabled to prevent the error ---
+    do_eval=False,
+    # --- Saving is based on steps, not evaluation ---
     save_steps=200,
+    save_total_limit=3, # Keep only the last 3 checkpoints
     logging_steps=25,
     report_to=["tensorboard"],
-    load_best_model_at_end=True,
-    metric_for_best_model="eval_loss", # PEFT trainer doesn't easily support WER
-    greater_is_better=False,
     remove_unused_columns=False,
     label_names=["labels"],
 )
@@ -96,13 +85,13 @@ trainer = Seq2SeqTrainer(
     args=training_args,
     model=model,
     train_dataset=dataset["train"],
-    eval_dataset=dataset["validation"],
+    # No eval_dataset is needed as evaluation is disabled
     data_collator=data_collator,
     tokenizer=feature_extractor,
 )
 
-print("Starting continued training...")
+print("Starting training...")
 trainer.train()
 
-print(f"Training complete. New adapter saved to {NEW_ADAPTER_SAVE_PATH}")
+print(f"Training complete. Final adapter saved to {NEW_ADAPTER_SAVE_PATH}")
 trainer.save_model()

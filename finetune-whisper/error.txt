@@ -1,22 +1,50 @@
-training_args = Seq2SeqTrainingArguments(
-    output_dir=NEW_ADAPTER_SAVE_PATH,
-    per_device_train_batch_size=8,
-    gradient_accumulation_steps=1,
-    learning_rate=1e-5,
-    warmup_steps=50,
-    max_steps=1000,
-    fp16=True,
-    
-    # --- The Fix ---
-    do_eval=True,               # <<< ADD THIS LINE: Explicitly enable evaluation
-    eval_steps=200,             # Tell it to evaluate every 200 steps
-    save_steps=200,             # Tell it to save every 200 steps (now they match!)
-    # --- End of Fix ---
-
-    logging_steps=25,
-    report_to=["tensorboard"],
-    load_best_model_at_end=True,
-    greater_is_better=False,
-    remove_unused_columns=False,
-    label_names=["labels"],
-)
+trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+Downloading data: 100%|██████████| 105/105 [00:00<00:00, 18001.30files/s]
+Generating train split: 634158 examples [03:16, 3231.20 examples/s]
+Map: 100%|██████████| 634158/634158 [1:52:48<00:00, 93.69 examples/s] s]]
+/app/finetune_lora.py:81: FutureWarning: `tokenizer` is deprecated and will be removed in version 5.0.0 for `Seq2SeqTrainer.__init__`. Use `processing_class` instead.
+  trainer = Seq2SeqTrainer(
+Starting training...
+100%|██████████| 1000/1000 [37:13<00:00,  2.23s/it]]
+{'loss': 0.1569, 'grad_norm': 1.5033947229385376, 'learning_rate': 4.800000000000001e-06, 'epoch': 0.0}
+{'loss': 0.1464, 'grad_norm': 1.3279043436050415, 'learning_rate': 9.800000000000001e-06, 'epoch': 0.0}
+{'loss': 0.1129, 'grad_norm': 2.2229604721069336, 'learning_rate': 9.747368421052633e-06, 'epoch': 0.0}
+{'loss': 0.1302, 'grad_norm': 3.973259210586548, 'learning_rate': 9.484210526315791e-06, 'epoch': 0.0}
+{'loss': 0.0895, 'grad_norm': 2.54793381690979, 'learning_rate': 9.221052631578949e-06, 'epoch': 0.0}
+{'loss': 0.1042, 'grad_norm': 1.7842626571655273, 'learning_rate': 8.957894736842107e-06, 'epoch': 0.0}
+{'loss': 0.0833, 'grad_norm': 0.4802033007144928, 'learning_rate': 8.694736842105264e-06, 'epoch': 0.0}
+{'loss': 0.1, 'grad_norm': 1.4777506589889526, 'learning_rate': 8.431578947368422e-06, 'epoch': 0.0}
+{'loss': 0.0901, 'grad_norm': 2.5328128337860107, 'learning_rate': 8.178947368421054e-06, 'epoch': 0.0}
+{'loss': 0.0716, 'grad_norm': 2.7214391231536865, 'learning_rate': 7.915789473684212e-06, 'epoch': 0.0}
+{'loss': 0.074, 'grad_norm': 1.3659021854400635, 'learning_rate': 7.65263157894737e-06, 'epoch': 0.0}
+{'loss': 0.08, 'grad_norm': 2.2054800987243652, 'learning_rate': 7.3894736842105275e-06, 'epoch': 0.0}
+{'loss': 0.0722, 'grad_norm': 1.837725043296814, 'learning_rate': 7.126315789473685e-06, 'epoch': 0.0}
+{'loss': 0.0958, 'grad_norm': 1.4634456634521484, 'learning_rate': 6.863157894736843e-06, 'epoch': 0.0}
+{'loss': 0.0727, 'grad_norm': 1.877967357635498, 'learning_rate': 6.600000000000001e-06, 'epoch': 0.0}
+{'loss': 0.0689, 'grad_norm': 1.6856493949890137, 'learning_rate': 6.336842105263158e-06, 'epoch': 0.01}
+{'loss': 0.0975, 'grad_norm': 3.2223408222198486, 'learning_rate': 6.073684210526316e-06, 'epoch': 0.01}
+{'loss': 0.075, 'grad_norm': 1.849706768989563, 'learning_rate': 5.810526315789474e-06, 'epoch': 0.01}
+{'loss': 0.0698, 'grad_norm': 1.6193523406982422, 'learning_rate': 5.547368421052632e-06, 'epoch': 0.01}
+{'loss': 0.0951, 'grad_norm': 1.882861614227295, 'learning_rate': 5.2842105263157896e-06, 'epoch': 0.01}
+{'loss': 0.0603, 'grad_norm': 1.6329982280731201, 'learning_rate': 5.021052631578948e-06, 'epoch': 0.01}
+{'loss': 0.0775, 'grad_norm': 1.800546407699585, 'learning_rate': 4.757894736842106e-06, 'epoch': 0.01}
+{'loss': 0.0799, 'grad_norm': 2.0169785022735596, 'learning_rate': 4.494736842105263e-06, 'epoch': 0.01}
+{'loss': 0.0718, 'grad_norm': 1.8592578172683716, 'learning_rate': 4.2315789473684215e-06, 'epoch': 0.01}
+{'loss': 0.0808, 'grad_norm': 1.4955496788024902, 'learning_rate': 3.968421052631579e-06, 'epoch': 0.01}
+{'loss': 0.0702, 'grad_norm': 1.291701078414917, 'learning_rate': 3.7052631578947374e-06, 'epoch': 0.01}
+{'loss': 0.0673, 'grad_norm': 0.8999069333076477, 'learning_rate': 3.4421052631578947e-06, 'epoch': 0.01}
+{'loss': 0.0658, 'grad_norm': 1.8793232440948486, 'learning_rate': 3.178947368421053e-06, 'epoch': 0.01}
+{'loss': 0.07, 'grad_norm': 1.420280933380127, 'learning_rate': 2.9157894736842107e-06, 'epoch': 0.01}
+{'loss': 0.073, 'grad_norm': 1.909515619277954, 'learning_rate': 2.652631578947369e-06, 'epoch': 0.01}
+{'loss': 0.0665, 'grad_norm': 3.5624616146087646, 'learning_rate': 2.3894736842105266e-06, 'epoch': 0.01}
+{'loss': 0.0735, 'grad_norm': 1.52476167678833, 'learning_rate': 2.1263157894736844e-06, 'epoch': 0.01}
+{'loss': 0.0674, 'grad_norm': 1.6267671585083008, 'learning_rate': 1.8631578947368424e-06, 'epoch': 0.01}
+{'loss': 0.0626, 'grad_norm': 1.1721049547195435, 'learning_rate': 1.6000000000000001e-06, 'epoch': 0.01}
+{'loss': 0.0664, 'grad_norm': 1.9928810596466064, 'learning_rate': 1.3368421052631581e-06, 'epoch': 0.01}
+{'loss': 0.0781, 'grad_norm': 1.721795916557312, 'learning_rate': 1.0736842105263159e-06, 'epoch': 0.01}
+{'loss': 0.0628, 'grad_norm': 1.6333814859390259, 'learning_rate': 8.105263157894736e-07, 'epoch': 0.01}
+{'loss': 0.092, 'grad_norm': 2.080247402191162, 'learning_rate': 5.473684210526316e-07, 'epoch': 0.01}
+{'loss': 0.0699, 'grad_norm': 2.812140941619873, 'learning_rate': 2.842105263157895e-07, 'epoch': 0.01}
+{'loss': 0.0669, 'grad_norm': 1.4567742347717285, 'learning_rate': 2.1052631578947368e-08, 'epoch': 0.01}
+{'train_runtime': 2233.4188, 'train_samples_per_second': 3.582, 'train_steps_per_second': 0.448, 'train_loss': 0.0827086490392685, 'epoch': 0.01}
+Training complete. Final adapter saved to ./my-whisper-medium-lora-continued

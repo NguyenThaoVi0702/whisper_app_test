@@ -1,19 +1,32 @@
-from transformers import WhisperForConditionalGeneration, WhisperFeatureExtractor, WhisperTokenizer, BitsAndBytesConfig, Seq2SeqTrainingArguments, Seq2SeqTrainer, WhisperProcessor, AutoTokenizer
-from peft import PeftModel, PeftConfig
+import os
+from transformers import WhisperForConditionalGeneration, WhisperFeatureExtractor, AutoTokenizer
+from peft import PeftModel
 
-modelID = "./model"
-base_model = WhisperForConditionalGeneration.from_pretrained(
-modelID
-#, use_cache=False, device_map="auto",  # in case weird bug in `peft`: device_map={"": 0}
-#quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True, bnb_4bit_quant_type="nf4")
-)
-FEATURE_EXTRACTOR = WhisperFeatureExtractor.from_pretrained(modelID)
-#TOKENIZER = WhisperTokenizer.from_pretrained(modelID, language="vi", task="transcribe")
-TOKENIZER = AutoTokenizer.from_pretrained(modelID)
+# --- Configuration ---
+BASE_MODEL_PATH = "./model"
+ADAPTER_PATH = "./my-whisper-medium-lora-continued"
+MERGED_MODEL_SAVE_PATH = "./merged_model_dir"
 
-#model = PeftModel.from_pretrained(base_model, "./my-whisper-medium-lora",is_trainable = False)
-#model = model.merge_and_unload()
-#model.save_pretrained("merged_model_dir")
-#FEATURE_EXTRACTOR.save_pretrained("merged_model_dir")
-TOKENIZER.save_pretrained("merged_model_ct2_dir")
+print(f"Loading base model from: {BASE_MODEL_PATH}")
+base_model = WhisperForConditionalGeneration.from_pretrained(BASE_MODEL_PATH, device_map="auto")
 
+print(f"Loading LoRA adapter from: {ADAPTER_PATH}")
+model = PeftModel.from_pretrained(base_model, ADAPTER_PATH)
+
+print("Merging adapter into the base model...")
+model = model.merge_and_unload()
+print("Merging complete.")
+
+# --- THE DEFINITIVE FIX IS HERE ---
+# We use AutoTokenizer to ensure the complete tokenizer, including the
+# essential 'tokenizer.json' file, is loaded and saved correctly.
+print("Loading tokenizer using AutoTokenizer for a complete save...")
+tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_PATH)
+feature_extractor = WhisperFeatureExtractor.from_pretrained(BASE_MODEL_PATH)
+
+print(f"Saving the complete, merged model to: {MERGED_MODEL_SAVE_PATH}")
+model.save_pretrained(MERGED_MODEL_SAVE_PATH)
+tokenizer.save_pretrained(MERGED_MODEL_SAVE_PATH)
+feature_extractor.save_pretrained(MERGED_MODEL_SAVE_PATH)
+
+print(f"Process finished. Your merged model in '{MERGED_MODEL_SAVE_PATH}' is now complete.")

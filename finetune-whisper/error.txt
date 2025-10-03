@@ -1,19 +1,30 @@
 
-meeting_worker      | [2025-10-02 17:13:13,538: INFO/MainProcess] Processing audio with duration 14:40.900
-meeting_worker      | [2025-10-02 17:13:16,696: ERROR/MainProcess] An unexpected error occurred during transcription of /code/shared_audio/test_ING_1759399986/ING_full.wav: The model configuration does not contain the field 'alignment_heads' which lists the cross-attention heads that are highly correlated to the word-level timing. Please reconvert this model with the current version of ctranslate2.
-meeting_worker      | Traceback (most recent call last):
-meeting_worker      |   File "/code/app/processing/transcription.py", line 58, in transcribe
-meeting_worker      |     for segment in segments:
-meeting_worker      |                    ^^^^^^^^
-meeting_worker      |   File "/usr/local/lib/python3.12/dist-packages/faster_whisper/transcribe.py", line 1237, in generate_segments
-meeting_worker      |     self.add_word_timestamps(
-meeting_worker      |   File "/usr/local/lib/python3.12/dist-packages/faster_whisper/transcribe.py", line 1548, in add_word_timestamps
-meeting_worker      |     alignments = self.find_alignment(
-meeting_worker      |                  ^^^^^^^^^^^^^^^^^^^^
-meeting_worker      |   File "/usr/local/lib/python3.12/dist-packages/faster_whisper/transcribe.py", line 1667, in find_alignment
-meeting_worker      |     results = self.model.align(
-meeting_worker      |               ^^^^^^^^^^^^^^^^^
-meeting_worker      | RuntimeError: The model configuration does not contain the field 'alignment_heads' which lists the cross-attention heads that are highly correlated to the word-level timing. Please reconvert this model with the current version of ctranslate2.
-meeting_worker      | [2025-10-02 17:13:16,700: ERROR/MainProcess] [Job ID: 2] Transcription failed: Transcription resulted in an empty output.
-meeting_worker      | Traceback (most recent call last):
-meeting_worker      |   File "/code/app/worker/tasks.py", line 106, in run_tr
+Filtered dataset size: 633414
+Map:   0%|          | 0/633414 [00:00<?, ? examples/s]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/dist-packages/transformers/tokenization_utils_base.py", line 284, in __getattr__
+    return self.data[item]
+KeyError: 'ids'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/finetune_lora.py", line 50, in <module>
+    dataset = dataset.map(prepare_dataset, remove_columns=dataset["train"].column_names, num_proc=1)
+  File "/usr/local/lib/python3.10/dist-packages/datasets/dataset_dict.py", line 944, in map
+    dataset_dict[split] = dataset.map(
+  File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 557, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 3079, in map
+    for rank, done, content in Dataset._map_single(**dataset_kwargs):
+  File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 3501, in _map_single
+    for i, example in iter_outputs(shard_iterable):
+  File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 3475, in iter_outputs
+    yield i, apply_function(example, i, offset=offset)
+  File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 3398, in apply_function
+    processed_inputs = function(*fn_args, *additional_args, **fn_kwargs)
+  File "/app/finetune_lora.py", line 47, in prepare_dataset
+    batch["labels"] = tokenizer(batch["transcription"]).ids
+  File "/usr/local/lib/python3.10/dist-packages/transformers/tokenization_utils_base.py", line 286, in __getattr__
+    raise AttributeError
+AttributeError

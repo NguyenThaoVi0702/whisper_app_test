@@ -1,4 +1,4 @@
-# finetune_whisper.py (Adjusted for Whisper Large V3 Turbo Continued Fine-Tuning on A100 with Offline WER)
+# finetune_whisper.py (Quantization Disabled for A100 Stability)
 import os
 import glob
 from dataclasses import dataclass
@@ -8,7 +8,6 @@ from datasets import load_dataset, Audio
 from transformers import (
     WhisperForConditionalGeneration,
     WhisperProcessor,
-    BitsAndBytesConfig,
     Seq2SeqTrainingArguments,
     Seq2SeqTrainer,
 )
@@ -49,19 +48,15 @@ NEW_ADAPTER_SAVE_PATH = "./my-whisper-medium-lora-continued"
 # --- 2. Load Processor, Model, and Prepare for Continued PEFT Training ---
 processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
 
-# Quantization config for A100 (4-bit to save VRAM)
-quantization_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.bfloat16,  # A100 supports bf16
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4"
-)
+# DISABLED: Quantization (to avoid bnb/Triton issues on non-root Docker)
+# quantization_config = BitsAndBytesConfig(...)  # <-- Commented out
 
 model = WhisperForConditionalGeneration.from_pretrained(
     BASE_MODEL_PATH,
-    quantization_config=quantization_config,
+    # quantization_config=quantization_config,  # <-- Disabled
     device_map="auto",
-    use_cache=False
+    use_cache=False,
+    torch_dtype=torch.bfloat16  # <-- A100-optimized precision (stable, no quantization needed)
 )
 
 # Critical: Reset decoder biases to prevent repetitive artifacts (e.g., "v v v v")
@@ -176,7 +171,7 @@ def compute_metrics(pred):
     wer = compute_wer(label_str, pred_str)
     return {"wer": wer}
 
-# --- 5. Training Arguments (Optimized for A100 with Eval) ---
+# --- 5. Training Arguments (Optimized for A100 with Eval; No bnb Optim) ---
 training_args = Seq2SeqTrainingArguments(
     output_dir=NEW_ADAPTER_SAVE_PATH,
     per_device_train_batch_size=16,  # A100 can handle larger
@@ -186,7 +181,7 @@ training_args = Seq2SeqTrainingArguments(
     warmup_ratio=0.1,
     max_steps=500,  # Conservative for continued; monitor eval
     bf16=True,  # A100 native support
-    optim="adamw_bnb_8bit",
+    optim="adamw_torch",  # <-- Changed: Default AdamW (no bnb_8bit needed)
     evaluation_strategy="steps",
     eval_steps=100,
     save_steps=200,
@@ -199,7 +194,7 @@ training_args = Seq2SeqTrainingArguments(
     remove_unused_columns=False,
     label_names=["labels"],
     predict_with_generate=False,  # PEFT compatibility
-    dataloader_num_workers=4,
+    dataloader_num_workers=0,  # <-- Temp: Disable multi-worker to avoid cache races (re-enable later if stable)
 )
 
 # --- 6. Create and Run Trainer with Eval ---

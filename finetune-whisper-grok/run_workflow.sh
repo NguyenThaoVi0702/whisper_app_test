@@ -27,6 +27,7 @@ echo "======================================================"
 docker run \
   -d \
   --name "$FINETUNE_CONTAINER_NAME" \
+  --user $(id -u):$(id -g) \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
@@ -48,6 +49,7 @@ echo "======================================================"
 docker run \
   -d \
   --name "$MERGE_CONTAINER_NAME" \
+  --user $(id -u):$(id -g) \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
@@ -69,6 +71,7 @@ echo "======================================================"
 docker run \
   -d \
   --name "$CONVERT_CONTAINER_NAME" \
+  --user $(id -u):$(id -g) \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
@@ -84,5 +87,5 @@ docker rm "$CONVERT_CONTAINER_NAME"
 
 echo ""
 echo "======================================================"
-echo " ENTIRE WORKFLOW COMPLETE! (Turbo-Adjusted) "
+echo " ENTIRE WORKFLOW COMPLETE! (Turbo-Adjusted with User Ownership) "
 echo "======================================================"

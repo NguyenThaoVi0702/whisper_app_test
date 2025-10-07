@@ -1,8 +1,9 @@
-# finetune_whisper.py (Adjusted for Whisper Large V3 Turbo Continued Fine-Tuning on A100 with Evaluation)
+# finetune_whisper.py (Adjusted for Whisper Large V3 Turbo Continued Fine-Tuning on A100 with Offline WER)
 import os
 import glob
 from dataclasses import dataclass
 import torch
+import numpy as np  # For potential array ops, but WER is pure Python here
 from datasets import load_dataset, Audio
 from transformers import (
     WhisperForConditionalGeneration,
@@ -12,6 +13,32 @@ from transformers import (
     Seq2SeqTrainer,
 )
 from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training, LoraConfig
+
+# --- Built-in Offline WER (No jiwer Needed) ---
+def levenshtein_distance(s1, s2):
+    """Compute Levenshtein distance between two strings (word-level)."""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+def compute_wer(reference, hypothesis):
+    """Compute Word Error Rate (WER) between lists of strings."""
+    if len(reference) == 0 or len(hypothesis) == 0:
+        return 1.0 if len(reference) != len(hypothesis) else 0.0  # Handle empty cases
+    total_distance = sum(levenshtein_distance(ref.split(), hyp.split()) for ref, hyp in zip(reference, hypothesis))
+    total_words = sum(len(ref.split()) for ref in reference)
+    return total_distance / total_words if total_words > 0 else 0.0
 
 # --- 1. Define Paths and Configuration ---
 BASE_MODEL_PATH = "./model"  # Your coworker's pre-fine-tuned Whisper Large V3 Turbo
@@ -133,7 +160,7 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
 data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
-# Optional: Add compute_metrics for WER evaluation (requires 'jiwer' in requirements)
+# Offline WER Metrics (Built-in, No External Libs)
 def compute_metrics(pred):
     pred_ids = pred.predictions
     label_ids = pred.label_ids
@@ -145,9 +172,8 @@ def compute_metrics(pred):
     pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
     label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
 
-    # Compute WER
-    import jiwer
-    wer = jiwer.wer(label_str, pred_str)
+    # Compute WER (using built-in function)
+    wer = compute_wer(label_str, pred_str)
     return {"wer": wer}
 
 # --- 5. Training Arguments (Optimized for A100 with Eval) ---
@@ -184,7 +210,7 @@ trainer = Seq2SeqTrainer(
     eval_dataset=val_dataset,
     data_collator=data_collator,
     tokenizer=processor,  # FIXED: Use processor
-    compute_metrics=compute_metrics,  # Optional WER tracking
+    compute_metrics=compute_metrics,  # Offline WER tracking
 )
 
 print("Starting continued training with evaluation...")

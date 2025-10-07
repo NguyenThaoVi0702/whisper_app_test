@@ -28,13 +28,16 @@ docker run \
   -d \
   --name "$FINETUNE_CONTAINER_NAME" \
   --user $(id -u):$(id -g) \
+  -e TRITON_CACHE_DIR=/tmp/triton_cache \
+  -e XDG_CACHE_HOME=/tmp \
+  -e TORCH_HOME=/tmp \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
   "$EXISTING_IMAGE_NAME" \
-  bash -c "pip3 install jiwer && python3 finetune_whisper.py"
+  python3 finetune_whisper.py
 
 echo "Waiting for fine-tuning to complete..."
 docker wait "$FINETUNE_CONTAINER_NAME"
@@ -50,13 +53,16 @@ docker run \
   -d \
   --name "$MERGE_CONTAINER_NAME" \
   --user $(id -u):$(id -g) \
+  -e TRITON_CACHE_DIR=/tmp/triton_cache \
+  -e XDG_CACHE_HOME=/tmp \
+  -e TORCH_HOME=/tmp \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
   "$EXISTING_IMAGE_NAME" \
-  bash -c "pip3 install jiwer && python3 merge_adapters.py"
+  python3 merge_adapters.py
 
 echo "Waiting for merging to complete..."
 docker wait "$MERGE_CONTAINER_NAME"
@@ -72,13 +78,16 @@ docker run \
   -d \
   --name "$CONVERT_CONTAINER_NAME" \
   --user $(id -u):$(id -g) \
+  -e TRITON_CACHE_DIR=/tmp/triton_cache \
+  -e XDG_CACHE_HOME=/tmp \
+  -e TORCH_HOME=/tmp \
   --gpus all \
   -e CUDA_VISIBLE_DEVICES=$MIG_DEVICE_UUID \
   --workdir /app \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
   "$EXISTING_IMAGE_NAME" \
-  bash -c "pip3 install jiwer && python3 convert_model.py"
+  python3 convert_model.py
 
 echo "Waiting for conversion to complete..."
 docker wait "$CONVERT_CONTAINER_NAME"
@@ -87,5 +96,5 @@ docker rm "$CONVERT_CONTAINER_NAME"
 
 echo ""
 echo "======================================================"
-echo " ENTIRE WORKFLOW COMPLETE! (Turbo-Adjusted with User Ownership and jiwer Install) "
+echo " ENTIRE WORKFLOW COMPLETE! (Quantization Disabled + Cache Fixes) "
 echo "======================================================"

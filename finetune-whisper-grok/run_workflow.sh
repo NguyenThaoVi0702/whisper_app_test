@@ -34,7 +34,7 @@ docker run \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
   "$EXISTING_IMAGE_NAME" \
-  python3 finetune_whisper.py
+  bash -c "pip3 install jiwer && python3 finetune_whisper.py"
 
 echo "Waiting for fine-tuning to complete..."
 docker wait "$FINETUNE_CONTAINER_NAME"
@@ -56,7 +56,7 @@ docker run \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
   "$EXISTING_IMAGE_NAME" \
-  python3 merge_adapters.py
+  bash -c "pip3 install jiwer && python3 merge_adapters.py"
 
 echo "Waiting for merging to complete..."
 docker wait "$MERGE_CONTAINER_NAME"
@@ -78,7 +78,7 @@ docker run \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
   "$EXISTING_IMAGE_NAME" \
-  python3 convert_model.py
+  bash -c "pip3 install jiwer && python3 convert_model.py"
 
 echo "Waiting for conversion to complete..."
 docker wait "$CONVERT_CONTAINER_NAME"
@@ -87,5 +87,5 @@ docker rm "$CONVERT_CONTAINER_NAME"
 
 echo ""
 echo "======================================================"
-echo " ENTIRE WORKFLOW COMPLETE! (Turbo-Adjusted with User Ownership) "
+echo " ENTIRE WORKFLOW COMPLETE! (Turbo-Adjusted with User Ownership and jiwer Install) "
 echo "======================================================"

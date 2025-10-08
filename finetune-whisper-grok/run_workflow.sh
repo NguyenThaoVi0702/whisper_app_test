@@ -4,7 +4,7 @@ set -e
 
 # --- Configuration ---
 EXISTING_IMAGE_NAME="dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora:v2"
-MIG_DEVICE_UUID="MIG-a45fc4b1-c85e-5a3b-8b3d-79191377ec06" 
+MIG_DEVICE_UUID="MIG-****" 
 
 # --- Container Names ---
 FINETUNE_CONTAINER_NAME="lora-finetuning-job"

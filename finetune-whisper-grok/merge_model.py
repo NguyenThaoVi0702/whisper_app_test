@@ -1,13 +1,11 @@
-# merge_adapters.py (Adjusted for Whisper Large V3 Turbo to Preserve Turbo-Specific Config)
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 from peft import PeftModel
 import json
 import os
 
-# --- Configuration ---
 BASE_MODEL_PATH = "./model"
-ADAPTER_PATH = "./my-whisper-medium-lora-continued"
-MERGED_MODEL_SAVE_PATH = "./merged_model_dir"
+ADAPTER_PATH = "./new_whisper_vietbud500_adpapter"
+MERGED_MODEL_SAVE_PATH = "./new_whisper_vietbud500_merged_model"
 
 print(f"Loading base model from: {BASE_MODEL_PATH}")
 base_model = WhisperForConditionalGeneration.from_pretrained(BASE_MODEL_PATH, device_map="auto")

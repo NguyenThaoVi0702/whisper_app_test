@@ -1,24 +1,17 @@
 #!/bin/bash
 
-# Stop the script if any command fails
 set -e
 
 # --- Configuration ---
 EXISTING_IMAGE_NAME="dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora:v2"
-MIG_DEVICE_UUID="PASTE_YOUR_MIG_UUID_HERE" # Make sure this is set correctly
+MIG_DEVICE_UUID="MIG-a45fc4b1-c85e-5a3b-8b3d-79191377ec06" 
 
 # --- Container Names ---
 FINETUNE_CONTAINER_NAME="lora-finetuning-job"
 MERGE_CONTAINER_NAME="lora-merging-job"
 CONVERT_CONTAINER_NAME="ct2-conversion-job"
 
-# --- Workflow Steps ---
 
-# Check if the user has changed the UUID
-if [ "$MIG_DEVICE_UUID" == "PASTE_YOUR_MIG_UUID_HERE" ]; then
-  echo "!!! ERROR: Please edit this script and set the 'MIG_DEVICE_UUID' variable."
-  exit 1
-fi
 
 echo "======================================================"
 echo " STEP 1: Starting LoRA fine-tuning (Whisper Large V3 Turbo continued)..."
@@ -36,8 +29,9 @@ docker run \
   --workdir /app \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
+  -v "$(pwd)/.cache/huggingface/datasets:/root/.cache/huggingface/datasets" \
   "$EXISTING_IMAGE_NAME" \
-  python3 finetune_whisper.py
+  python3 finetune_lora.py
 
 echo "Waiting for fine-tuning to complete..."
 docker wait "$FINETUNE_CONTAINER_NAME"
@@ -61,8 +55,9 @@ docker run \
   --workdir /app \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
+  -v "$(pwd)/.cache/huggingface/datasets:/root/.cache/huggingface/datasets" \
   "$EXISTING_IMAGE_NAME" \
-  python3 merge_adapters.py
+  python3 merge_lora.py
 
 echo "Waiting for merging to complete..."
 docker wait "$MERGE_CONTAINER_NAME"
@@ -86,8 +81,9 @@ docker run \
   --workdir /app \
   -v "$(pwd)":/app \
   -v "/tmp/viet_bud500":"/tmp/viet_bud500" \
+  -v "$(pwd)/.cache/huggingface/datasets:/root/.cache/huggingface/datasets" \
   "$EXISTING_IMAGE_NAME" \
-  python3 convert_model.py
+  python3 convert_to_ct2.py
 
 echo "Waiting for conversion to complete..."
 docker wait "$CONVERT_CONTAINER_NAME"
@@ -96,5 +92,5 @@ docker rm "$CONVERT_CONTAINER_NAME"
 
 echo ""
 echo "======================================================"
-echo " ENTIRE WORKFLOW COMPLETE! (Quantization Disabled + Cache Fixes) "
+echo " ENTIRE WORKFLOW COMPLETE! (Turbo-Adjusted with User Ownership and jiwer Install) "
 echo "======================================================"

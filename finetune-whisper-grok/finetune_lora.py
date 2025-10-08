@@ -1,4 +1,3 @@
-# finetune_whisper.py (Quantization Disabled for A100 Stability)
 import os
 import glob
 from dataclasses import dataclass
@@ -39,11 +38,12 @@ def compute_wer(reference, hypothesis):
     total_words = sum(len(ref.split()) for ref in reference)
     return total_distance / total_words if total_words > 0 else 0.0
 
-# --- 1. Define Paths and Configuration ---
-BASE_MODEL_PATH = "./model"  # Your coworker's pre-fine-tuned Whisper Large V3 Turbo
-ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"  # Existing adapter (renamed for clarity, but works with turbo)
-DATASET_PATH = "/tmp/viet_bud500"  # Local path to vietbud500
-NEW_ADAPTER_SAVE_PATH = "./my-whisper-medium-lora-continued"
+
+BASE_MODEL_PATH = "./model"  
+ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"  
+DATASET_PATH = "/tmp/viet_bud500"  
+NEW_ADAPTER_SAVE_PATH = "./new_whisper_vietbud500_adpapter"
+
 
 # --- 2. Load Processor, Model, and Prepare for Continued PEFT Training ---
 processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
@@ -87,11 +87,11 @@ def filter_data(example):
     return 16000 < audio_len < 480000 and len(example["transcription"]) > 5
 
 print("Original train size:", len(train_dataset))
-train_dataset = train_dataset.filter(filter_data, num_proc=4)
+train_dataset = train_dataset.filter(filter_data, num_proc=1)
 print("Filtered train size:", len(train_dataset))
 
 print("Original val size:", len(val_dataset))
-val_dataset = val_dataset.filter(filter_data, num_proc=4)
+val_dataset = val_dataset.filter(filter_data, num_proc=1)
 print("Filtered val size:", len(val_dataset))
 
 def prepare_dataset(batch):
@@ -99,16 +99,15 @@ def prepare_dataset(batch):
     batch["input_features"] = processor.feature_extractor(
         audio["array"], sampling_rate=16000
     ).input_features[0]
-    # FIXED: Use .input_ids, not .ids
     batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
     # Compute lengths for filtering
-    batch["input_length"] = len(batch["input_features"])
-    batch["labels_length"] = len(batch["labels"])
+    batch["input_length"] = int(len(audio["array"]))
+    batch["labels_length"] = int(len(batch["labels"]))
     return batch
 
 # Map preparation
-train_dataset = train_dataset.map(prepare_dataset, remove_columns=train_dataset.column_names, num_proc=4)
-val_dataset = val_dataset.map(prepare_dataset, remove_columns=val_dataset.column_names, num_proc=4)
+train_dataset = train_dataset.map(prepare_dataset, remove_columns=train_dataset.column_names, num_proc=1)
+val_dataset = val_dataset.map(prepare_dataset, remove_columns=val_dataset.column_names, num_proc=1)
 
 # Filters for stability (from original script)
 def filter_inputs(example):

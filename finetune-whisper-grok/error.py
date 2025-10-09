@@ -1,4 +1,8 @@
-
+ai_dev@ppe-nvidia-k8s-worker01:~$ docker exec -it lora-finetuning-job bash
+ai_dev@3bc44521921e:/app$ python3 finetune_lora.py
+trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+Resolving data files: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 105/105 [00:00<00:00, 137453.78it/s]
+Loading dataset shards: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 91/91 [00:00<00:00, 1765.32it/s]
 Original train size: 634158
 Filter:   0%|                                                                                                                                                             | 0/634158 [00:00<?, ? examples/s]
 Traceback (most recent call last):

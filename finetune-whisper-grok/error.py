@@ -1,4 +1,7 @@
-rainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetune_whisper$ docker exec -it lora-finetuning-job bash
+ai_dev@d3877e909cca:/app$ python3 finetune_lora.py
+trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
 Resolving data files: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████| 105/105 [00:00<00:00, 258907.65it/s]
 Loading dataset shards: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████| 91/91 [00:00<00:00, 383.02it/s]
 Original train size: 634158
@@ -19,3 +22,4 @@ Starting continued training with evaluation...
 {'loss': 0.0708, 'grad_norm': 0.49129214882850647, 'learning_rate': 6.133333333333334e-06, 'epoch': 0.02}
 {'loss': 0.0711, 'grad_norm': 0.6761265993118286, 'learning_rate': 5.577777777777778e-06, 'epoch': 0.03}
 {'loss': 0.0703, 'grad_norm': 0.593568742275238, 'learning_rate': 5.022222222222223e-06, 'epoch': 0.03}
+ 58%|███████████████████████████████████████████████████████████████████████████  

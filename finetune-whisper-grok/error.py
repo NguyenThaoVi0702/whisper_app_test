@@ -1,146 +1,47 @@
-{
-  "best_global_step": null,
-  "best_metric": null,
-  "best_model_checkpoint": null,
-  "epoch": 0.040415266867059034,
-  "eval_steps": 200,
-  "global_step": 400,
-  "is_hyper_param_search": false,
-  "is_local_process_zero": true,
-  "is_world_process_zero": true,
-  "log_history": [
-    {
-      "epoch": 0.0025259541791911896,
-      "grad_norm": 1.0528565645217896,
-      "learning_rate": 4.800000000000001e-06,
-      "loss": 0.1677,
-      "step": 25
-    },
-    {
-      "epoch": 0.005051908358382379,
-      "grad_norm": 1.0061231851577759,
-      "learning_rate": 9.800000000000001e-06,
-      "loss": 0.1376,
-      "step": 50
-    },
-    {
-      "epoch": 0.0075778625375735684,
-      "grad_norm": 0.898628830909729,
-      "learning_rate": 9.466666666666667e-06,
-      "loss": 0.1068,
-      "step": 75
-    },
-    {
-      "epoch": 0.010103816716764758,
-      "grad_norm": 0.7446250915527344,
-      "learning_rate": 8.91111111111111e-06,
-      "loss": 0.0937,
-      "step": 100
-    },
-    {
-      "epoch": 0.012629770895955947,
-      "grad_norm": 0.672296941280365,
-      "learning_rate": 8.355555555555556e-06,
-      "loss": 0.0823,
-      "step": 125
-    },
-    {
-      "epoch": 0.015155725075147137,
-      "grad_norm": 0.7925171256065369,
-      "learning_rate": 7.800000000000002e-06,
-      "loss": 0.0869,
-      "step": 150
-    },
-    {
-      "epoch": 0.017681679254338327,
-      "grad_norm": 0.6122221350669861,
-      "learning_rate": 7.244444444444445e-06,
-      "loss": 0.0834,
-      "step": 175
-    },
-    {
-      "epoch": 0.020207633433529517,
-      "grad_norm": 0.6292484402656555,
-      "learning_rate": 6.688888888888889e-06,
-      "loss": 0.0724,
-      "step": 200
-    },
-    {
-      "epoch": 0.022733587612720704,
-      "grad_norm": 0.494079053401947,
-      "learning_rate": 6.133333333333334e-06,
-      "loss": 0.0708,
-      "step": 225
-    },
-    {
-      "epoch": 0.025259541791911894,
-      "grad_norm": 0.6743124723434448,
-      "learning_rate": 5.577777777777778e-06,
-      "loss": 0.0711,
-      "step": 250
-    },
-    {
-      "epoch": 0.027785495971103084,
-      "grad_norm": 0.5979343056678772,
-      "learning_rate": 5.022222222222223e-06,
-      "loss": 0.0703,
-      "step": 275
-    },
-    {
-      "epoch": 0.030311450150294274,
-      "grad_norm": 0.5862478613853455,
-      "learning_rate": 4.4666666666666665e-06,
-      "loss": 0.0712,
-      "step": 300
-    },
-    {
-      "epoch": 0.03283740432948546,
-      "grad_norm": 0.6269673705101013,
-      "learning_rate": 3.911111111111112e-06,
-      "loss": 0.0678,
-      "step": 325
-    },
-    {
-      "epoch": 0.035363358508676654,
-      "grad_norm": 0.4882247745990753,
-      "learning_rate": 3.3555555555555557e-06,
-      "loss": 0.0703,
-      "step": 350
-    },
-    {
-      "epoch": 0.03788931268786784,
-      "grad_norm": 0.6420568227767944,
-      "learning_rate": 2.8000000000000003e-06,
-      "loss": 0.07,
-      "step": 375
-    },
-    {
-      "epoch": 0.040415266867059034,
-      "grad_norm": 0.6627606153488159,
-      "learning_rate": 2.2444444444444445e-06,
-      "loss": 0.072,
-      "step": 400
-    }
-  ],
-  "logging_steps": 25,
-  "max_steps": 500,
-  "num_input_tokens_seen": 0,
-  "num_train_epochs": 1,
-  "save_steps": 200,
-  "stateful_callbacks": {
-    "TrainerControl": {
-      "args": {
-        "should_epoch_stop": false,
-        "should_evaluate": false,
-        "should_log": false,
-        "should_save": true,
-        "should_training_stop": false
-      },
-      "attributes": {}
-    }
-  },
-  "total_flos": 4.4033296564224e+19,
-  "train_batch_size": 16,
-  "trial_name": null,
-  "trial_params": null
-}
+{{ngay}} (Ngày):
+
+Hướng dẫn viết: Ghi rõ ngày ban hành nghị quyết theo định dạng số.
+
+{{thang}} (Tháng):
+
+Hướng dẫn viết: Ghi rõ tháng ban hành nghị quyết theo định dạng số.
+
+{{nam}} (Năm):
+
+Hướng dẫn viết: Ghi rõ năm ban hành nghị quyết theo định dạng số.
+
+{{chi_dao_chung}} (Chỉ đạo chung):
+
+Hướng dẫn viết: Trình bày các chỉ đạo tổng thể, định hướng lớn, nguyên tắc chung cho toàn hệ thống; mỗi ý là một đối tượng, có thể là đoạn văn hoặc gạch đầu dòng.
+
+{{cong_tac_tin_dung}} (Công tác tín dụng):
+
+Hướng dẫn viết: Nêu các nhiệm vụ, giải pháp phát triển tín dụng, giao chỉ tiêu, phối hợp các khối liên quan; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{cong_tac_nguon_von}} (Công tác nguồn vốn):
+
+Hướng dẫn viết: Nêu các nhiệm vụ về quản lý nguồn vốn, tăng trưởng phí, giải pháp thanh toán; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{cong_tac_mo_hinh}} (Công tác mô hình, nhân sự, mạng lưới):
+
+Hướng dẫn viết: Trình bày kế hoạch cơ cấu tổ chức, phát triển nguồn nhân lực, đổi mới mô hình hoạt động, mở rộng mạng lưới; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{cong_tac_quan_tri_rui_ro}} (Công tác quản trị rủi ro, xử lý, thu hồi nợ):
+
+Hướng dẫn viết: Đưa ra các giải pháp kiểm soát rủi ro, phương án xử lý và thu hồi nợ, giao nhiệm vụ cho các đơn vị liên quan; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{cong_tac_mua_sam}} (Công tác mua sắm, XDCB):
+
+Hướng dẫn viết: Nêu nhiệm vụ rà soát, quản lý, xử lý tài sản công, đề xuất phương án vận hành cơ sở vật chất; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{cong_tac_chuyen_doi_so}} (Công tác chuyển đổi số và CNTT):
+
+Hướng dẫn viết: Trình bày các nhiệm vụ thúc đẩy chuyển đổi số, ứng dụng công nghệ mới, xây dựng quy trình, đảm bảo an toàn hệ thống; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{hoat_dong_cty_con}} (Hoạt động của các công ty con):
+
+Hướng dẫn viết: Đề xuất cơ chế phối hợp, chia sẻ dữ liệu, quản lý chỉ tiêu, đảm bảo an toàn công nghệ với các công ty con; liệt kê các ý nhỏ bằng a), b), c)...
+
+{{cong_viec_khac}} (Các công việc khác):
+
+Hướng dẫn viết: Liệt kê các nhiệm vụ bổ sung, các công việc liên quan đến vận hành, tổ chức sự kiện, truyền thông, quản lý tài liệu, các vấn đề phát sinh; liệt kê các ý nhỏ bằng a), b), c)...

@@ -1,0 +1,120 @@
+[
+    {
+        "Id": "sha256:b9fe67f46bfa26017373b6cbde2eb1880e3924ce1f41364eda4b5bb1dd93235b",
+        "RepoTags": [
+            "finetune_whisper_lora:v2",
+            "dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora:v2"
+        ],
+        "RepoDigests": [
+            "dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora@sha256:82cdd3cc1a20a76b6a2549e54f3fe6dc969c74087c17cdbeec0f4f47908b798c"
+        ],
+        "Parent": "sha256:959fd3c6ac6f6f5373019b8524e9d1b8b2ff6c83b316ef0c6355e8e823255830",
+        "Comment": "",
+        "Created": "2025-05-20T11:10:12.417736Z",
+        "DockerVersion": "26.1.3",
+        "Author": "",
+        "Config": {
+            "Hostname": "dr-bigdata-aiml-03",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": true,
+            "OpenStdin": true,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NVARCH=x86_64",
+                "NVIDIA_REQUIRE_CUDA=cuda>=12.0 brand=tesla,driver>=470,driver<471 brand=unknown,driver>=470,driver<471 brand=nvidia,driver>=470,driver<471 brand=nvidiartx,driver>=470,driver<471 brand=geforce,driver>=470,driver<471 brand=geforcertx,driver>=470,driver<471 brand=quadro,driver>=470,driver<471 brand=quadrortx,driver>=470,driver<471 brand=titan,driver>=470,driver<471 brand=titanrtx,driver>=470,driver<471",
+                "NV_CUDA_CUDART_VERSION=12.0.146-1",
+                "NV_CUDA_COMPAT_PACKAGE=cuda-compat-12-0",
+                "CUDA_VERSION=12.0.1",
+                "LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64",
+                "NVIDIA_VISIBLE_DEVICES=all",
+                "NVIDIA_DRIVER_CAPABILITIES=compute,utility",
+                "NV_CUDA_LIB_VERSION=12.0.1-1",
+                "NV_NVTX_VERSION=12.0.140-1",
+                "NV_LIBNPP_VERSION=12.0.1.104-1",
+                "NV_LIBNPP_PACKAGE=libnpp-12-0=12.0.1.104-1",
+                "NV_LIBCUSPARSE_VERSION=12.0.1.140-1",
+                "NV_LIBCUBLAS_PACKAGE_NAME=libcublas-12-0",
+                "NV_LIBCUBLAS_VERSION=12.0.2.224-1",
+                "NV_LIBCUBLAS_PACKAGE=libcublas-12-0=12.0.2.224-1",
+                "NV_LIBNCCL_PACKAGE_NAME=libnccl2",
+                "NV_LIBNCCL_PACKAGE_VERSION=2.16.5-1",
+                "NCCL_VERSION=2.16.5-1",
+                "NV_LIBNCCL_PACKAGE=libnccl2=2.16.5-1+cuda12.0",
+                "NVIDIA_PRODUCT_NAME=CUDA",
+                "NV_CUDNN_VERSION=8.8.0.121",
+                "NV_CUDNN_PACKAGE_NAME=libcudnn8",
+                "NV_CUDNN_PACKAGE=libcudnn8=8.8.0.121-1+cuda12.0",
+                "DEBIAN_FRONTEND=noninteractive"
+            ],
+            "Cmd": [
+                "/bin/bash"
+            ],
+            "Image": "finetune_whisper_lora:v1",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": [
+                "/opt/nvidia/nvidia_entrypoint.sh"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "4aacc4a1b876cc767c05221dcdbdbab246e0b4520532a2a4c8efddbfd64cf8c1",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:959fd3c6ac6f6f5373019b8524e9d1b8b2ff6c83b316ef0c6355e8e823255830",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "finetune_whisper",
+                "com.docker.compose.project.config_files": "/home/ubuntu/finetune_whisper/docker-compose.yaml",
+                "com.docker.compose.project.working_dir": "/home/ubuntu/finetune_whisper",
+                "com.docker.compose.replace": "293b88ec2765098e04f631029f7e8caa45373f7de6f97781bb44f7c4fc916cef",
+                "com.docker.compose.service": "test",
+                "com.docker.compose.version": "2.27.1",
+                "com.nvidia.cudnn.version": "8.8.0.121",
+                "maintainer": "NVIDIA CORPORATION <cudatools@nvidia.com>",
+                "org.opencontainers.image.ref.name": "ubuntu",
+                "org.opencontainers.image.version": "22.04"
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 16277919830,
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/u01/app/docker/overlay2/9d6b6fed246223126a206216c7f31491f07faa41914ec9fc44d0929421955886/diff:/u01/app/docker/overlay2/3edb626909654a3130a38eb8a8887bdcb1af04769ae214bccffb707e3e933aac/diff:/u01/app/docker/overlay2/d44cc7dc06f80ee3d6e90026ca099a3186aba77a528284b174e448400798a936/diff:/u01/app/docker/overlay2/dbf6ca18b9712a076a1b37d550c6b8c8395f6dfdbbb72ea5a0d2003042958acc/diff:/u01/app/docker/overlay2/913a31207673f513dd923d89c0dc95532403df06adca1bd35034bb9b2504054d/diff:/u01/app/docker/overlay2/6a422bf6ff835c679753b67713c6dd144302f77d6a138552ad67840be1b43f34/diff:/u01/app/docker/overlay2/78ca4a1b079900211b6104b277a3a50451220828dfc0ef398cc3afb6f27736c5/diff:/u01/app/docker/overlay2/85ef69be197650cbb6ccbe90c8ae2e23755dc0e303f088439e2e6552c356b5f8/diff:/u01/app/docker/overlay2/7ea86409eeba69dbfb855c90c3e1d9448711d38b2a0e07140cc4828f49c8ca65/diff:/u01/app/docker/overlay2/603ac9a28f1ecb84fa7945a84957d1c7325fecbda2a2b277a0c637c91a941e1b/diff:/u01/app/docker/overlay2/a11effaa012f9eabe3021157d8a871bc233fcdf3460e819e0baec1863689bab6/diff:/u01/app/docker/overlay2/fc4db49a94c0cfaa10ff257449f49a8e5e2fe4d4665123a850a4d54b72857ea2/diff:/u01/app/docker/overlay2/468fce7ae4028aace1f8538a754372edff12f793f44c7a1070d887481fb1ec27/diff:/u01/app/docker/overlay2/217aaa68647803fc52e32f574db77a472998f79c93ab57ed94c21945fff2076a/diff:/u01/app/docker/overlay2/7cd1db3c0f06459c636e4924ba57e9ee0be9b727ce42e8898c04497d7d28140b/diff:/u01/app/docker/overlay2/05f06195d9eae0e899cf95979e0c7302067fbc1a3e41dda2d6b88f5440565279/diff",
+                "MergedDir": "/u01/app/docker/overlay2/722577d419acaef6ebdf4a9167ec57352cf74f33e3e78faa1fe34e1fbc239c02/merged",
+                "UpperDir": "/u01/app/docker/overlay2/722577d419acaef6ebdf4a9167ec57352cf74f33e3e78faa1fe34e1fbc239c02/diff",
+                "WorkDir": "/u01/app/docker/overlay2/722577d419acaef6ebdf4a9167ec57352cf74f33e3e78faa1fe34e1fbc239c02/work"
+            },
+            "Name": "overlay2"
+        },
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:256d88da41857db513b95b50ba9a9b28491b58c954e25477d5dad8abb465430b",
+                "sha256:178d7602dd1e75b334b0219a41e7c6efaee3d52d073f88eb1095d71656cb5cd2",
+                "sha256:2a5bf62c62fa08e2e5ad84ae1dc910f0252c31c4ba086c1e946703139fd3c1a8",
+                "sha256:f94629874d94f90159ead8c74b9d0ed12f1a6a22dfb2d29a490a3d1b035a9478",
+                "sha256:b42818674af3b57eb38b8581c2ef0cef92eefe0695cf7bcbad261354a57699fb",
+                "sha256:1922301ea55c11b40d205ad73b0e2514dcedd7aa04c65db622a11483474915bd",
+                "sha256:24f6892ade8d01ab457f30c33818982f403fd761cfe1179426b34587af9c8e6b",
+                "sha256:67991b01d1dc3d05895f1cd7d577ddf2f1f11dbae5fd28da69f9b8fd8fec09d2",
+                "sha256:467dd29d1fed26d59a3314c7f93e13b3dd5bf322a0dce7c0f7d3f171d0267d66",
+                "sha256:fe40a9edc8dab4c4de2d36b2a7d3cee709b7284a738fb09b2e4a0a7f9bc263a2",
+                "sha256:0fa8bf5f2c5e1ffcbb24efe8ecb369515e99a1b0f1282fe5c8161410af855615",
+                "sha256:6b2d66a4d1086dd920517545fcbe4799501ef93568c49908c39ab3cca7b61c54",
+                "sha256:bd841f83239998cb68b837597ea8e047e7a17c0c18d4d1d6467d2e344df8df18",
+                "sha256:d2904cf8d4580578b2ff210f3af6caa895a83f3be57fd55bb040e2aa35692fb6",
+                "sha256:5a0f506ff252c8113c37857f1c3841bfa383e52a9e0b8a2fd4fa116183feee1f",
+                "sha256:726bb479455bd86ade5f0c236838d088e22121f259c9972730ebb238ef7c1a5c",
+                "sha256:7cad6f468ff24fe5f94a72e670d0b41b23d3e2add25abf65df74fbed58ad48c4"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2025-09-24T03:35:08.05947771Z"
+        }
+    }
+]

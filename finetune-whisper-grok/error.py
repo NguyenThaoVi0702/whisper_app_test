@@ -1,49 +1,16 @@
-{
-  "_name_or_path": "/root/models/STEVE_turbo-V1.2-batch128-lr2e-5-wd0.1-gradnorm1.0-40kextra/checkpoint-37772//",
-  "activation_dropout": 0.0,
-  "activation_function": "gelu",
-  "apply_spec_augment": false,
-  "architectures": [
-    "WhisperForConditionalGeneration"
-  ],
-  "attention_dropout": 0.0,
-  "begin_suppress_tokens": [
-    220,
-    50256
-  ],
-  "bos_token_id": 50257,
-  "classifier_proj_size": 256,
-  "d_model": 1280,
-  "decoder_attention_heads": 20,
-  "decoder_ffn_dim": 5120,
-  "decoder_layerdrop": 0.0,
-  "decoder_layers": 4,
-  "decoder_start_token_id": 50258,
-  "dropout": 0.0,
-  "encoder_attention_heads": 20,
-  "encoder_ffn_dim": 5120,
-  "encoder_layerdrop": 0.0,
-  "encoder_layers": 32,
-  "eos_token_id": 50257,
-  "init_std": 0.02,
-  "is_encoder_decoder": true,
-  "mask_feature_length": 10,
-  "mask_feature_min_masks": 0,
-  "mask_feature_prob": 0.0,
-  "mask_time_length": 10,
-  "mask_time_min_masks": 2,
-  "mask_time_prob": 0.05,
-  "max_source_positions": 1500,
-  "max_target_positions": 448,
-  "median_filter_width": 7,
-  "model_type": "whisper",
-  "num_hidden_layers": 32,
-  "num_mel_bins": 128,
-  "pad_token_id": 50257,
-  "scale_embedding": false,
-  "torch_dtype": "float16",
-  "transformers_version": "4.50.0.dev0",
-  "use_cache": false,
-  "use_weighted_layer_sum": false,
-  "vocab_size": 51866
-}
+ai_dev@2158b1d839aa:/app$ python3 finetune_lora.py
+trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+Resolving data files: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 105/105 [00:00<00:00, 291271.11it/s]
+Loading dataset shards: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████| 91/91 [00:00<00:00, 216.55it/s]
+Original train size: 634158
+Filtered train size: 633414
+Original val size: 7500
+Filtered val size: 7494
+Traceback (most recent call last):
+  File "/app/finetune_lora.py", line 124, in <module>
+    metric = evaluate.load("wer")
+  File "/usr/local/lib/python3.10/dist-packages/evaluate/loading.py", line 748, in load
+    evaluation_module = evaluation_module_factory(
+  File "/usr/local/lib/python3.10/dist-packages/evaluate/loading.py", line 681, in evaluation_module_factory
+    raise FileNotFoundError(
+FileNotFoundError: Couldn't find a module script at /app/wer/wer.py. Module 'wer' doesn't exist on the Hugging Face Hub either.

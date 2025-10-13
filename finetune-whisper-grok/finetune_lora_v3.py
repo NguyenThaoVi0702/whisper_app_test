@@ -11,7 +11,7 @@ from transformers import (
     Seq2SeqTrainer,
 )
 from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training, LoraConfig
-import jiwer  # NEW: Use jiwer for offline WER (no HF download needed)
+import jiwer  # Use jiwer for offline WER (no HF download needed)
 
 BASE_MODEL_PATH = "./model"  
 ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"  
@@ -127,7 +127,7 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
 data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
-# FIXED: Use jiwer directly for WER (offline, no HF load needed)
+# Use jiwer directly for WER (offline, no HF load needed)
 def compute_metrics(pred):
     pred_ids = pred.predictions
     
@@ -151,10 +151,8 @@ def compute_metrics(pred):
     wer = jiwer.wer(label_str, pred_str)
     return {"wer": wer}
 
-# Enhanced training args: Increased max_steps to 5000 for large 50GB dataset (original initial training was 3600 steps on smaller data).
-# With effective batch ~64 (16*4), this allows ~2-3 epochs assuming ~100k+ samples. Adjust based on monitoring.
-# Since continuing from ~3600 steps of prior adapter, this adds substantial learning on new data.
-# Reduced eval batch for stability; added generation kwargs for faster eval.
+# Enhanced training args: FIXED by adding explicit evaluation_strategy="steps" (matches save_strategy).
+# This ensures evals run at save intervals for load_best_model_at_end to work.
 has_bf16 = torch.cuda.is_bf16_supported()
 training_args = Seq2SeqTrainingArguments(
     output_dir=NEW_ADAPTER_SAVE_PATH,
@@ -168,7 +166,9 @@ training_args = Seq2SeqTrainingArguments(
     fp16=not has_bf16,
     optim="adamw_torch",  # Or "adamw_bnb_8bit" if using bitsandbytes heavily
     do_eval=True,
+    evaluation_strategy="steps",  # FIXED: Explicitly set to "steps" to match save_strategy and enable load_best_model_at_end
     eval_steps=500,  # More frequent evals with longer training
+    save_strategy="steps",  # Explicit for clarity (matches eval_steps)
     save_steps=500,
     save_total_limit=3,
     logging_steps=25,

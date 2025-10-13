@@ -11,7 +11,7 @@ from transformers import (
     Seq2SeqTrainer,
 )
 from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training, LoraConfig
-import evaluate  # For robust WER computation (uses jiwer internally)
+import jiwer  # NEW: Use jiwer for offline WER (no HF download needed)
 
 BASE_MODEL_PATH = "./model"  
 ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"  
@@ -127,9 +127,7 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
 data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
-# Use evaluate library for WER (as in the referenced notebook; jiwer is used internally by evaluate)
-metric = evaluate.load("wer")
-
+# FIXED: Use jiwer directly for WER (offline, no HF load needed)
 def compute_metrics(pred):
     pred_ids = pred.predictions
     
@@ -149,8 +147,8 @@ def compute_metrics(pred):
     pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
     label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
     
-    # Compute WER using evaluate (handles normalization, empty cases robustly)
-    wer = metric.compute(predictions=pred_str, references=label_str)
+    # Compute WER using jiwer (references first, then predictions; handles normalization/empty cases)
+    wer = jiwer.wer(label_str, pred_str)
     return {"wer": wer}
 
 # Enhanced training args: Increased max_steps to 5000 for large 50GB dataset (original initial training was 3600 steps on smaller data).

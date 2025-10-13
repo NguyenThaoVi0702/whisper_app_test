@@ -16,15 +16,8 @@ ENV NV_CUDNN_VERSION=9.14.0
 ENV NV_CUDNN_PACKAGE_NAME=libcudnn9
 ENV NV_CUDNN_PACKAGE=libcudnn9=9.14.0-1+cuda12.0
 
-# Upgrade key packages for compatibility and performance (using custom pip config)
-RUN pip install --upgrade torch transformers peft accelerate faster-whisper nvidia-cudnn-cu12
-
-# Install other required packages (based on your pip list; adjust if using requirements.txt)
-RUN pip install bitsandbytes datasets librosa safetensors tokenizers ctranslate2
-
-# Optional: If you need devel headers for compilation (e.g., custom CT2 build)
-# COPY cuda_libs/include/ /usr/local/cuda/include/
-# RUN ldconfig /usr/local/cuda/include/
+# Install only missing libraries for notebook workflow (evaluate for metrics, jiwer for WER, gradio for demo)
+RUN pip install evaluate jiwer gradio
 
 # Set working directory
 WORKDIR /app

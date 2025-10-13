@@ -3,10 +3,10 @@
         "Id": "sha256:b9fe67f46bfa26017373b6cbde2eb1880e3924ce1f41364eda4b5bb1dd93235b",
         "RepoTags": [
             "finetune_whisper_lora:v2",
-            "dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora:v2"
+            "dso-nexus.*****.vn/ai_docker/finetune_whisper_lora:v2"
         ],
         "RepoDigests": [
-            "dso-nexus.vietinbank.vn/ai_docker/finetune_whisper_lora@sha256:82cdd3cc1a20a76b6a2549e54f3fe6dc969c74087c17cdbeec0f4f47908b798c"
+            "dso-nexus.*****.vn/ai_docker/finetune_whisper_lora@sha256:82cdd3cc1a20a76b6a2549e54f3fe6dc969c74087c17cdbeec0f4f47908b798c"
         ],
         "Parent": "sha256:959fd3c6ac6f6f5373019b8524e9d1b8b2ff6c83b316ef0c6355e8e823255830",
         "Comment": "",

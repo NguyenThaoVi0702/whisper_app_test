@@ -14,3 +14,7 @@ Starting continued training with evaluation...
 /usr/local/lib/python3.10/dist-packages/bitsandbytes/autograd/_functions.py:315: UserWarning: MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
   warnings.warn(f"MatMul8bitLt: inputs will be cast from {A.dtype} to float16 during quantization")
 {'loss': 0.1688, 'grad_norm': 1.0315258502960205, 'learning_rate': 4.800000000000001e-06, 'epoch': 0.0}
+{'loss': 0.1382, 'grad_norm': 0.9598658680915833, 'learning_rate': 9.800000000000001e-06, 'epoch': 0.01}
+{'loss': 0.1073, 'grad_norm': 0.854949414730072, 'learning_rate': 9.951515151515152e-06, 'epoch': 0.01}
+{'loss': 0.0932, 'grad_norm': 0.7394211888313293, 'learning_rate': 9.901010101010102e-06, 'epoch': 0.01}
+{'loss': 0.0805, 'grad_norm': 0.6827227473258972, 'learning_rate': 9.850505050505051e-06, 'epoch': 0.01}

@@ -1,2 +1,27 @@
-RUN pip config set global.index-url https://dso-nexus.*****.vn/repository/itd_pypi/simple
-RUN pip config set global.trusted-host dso-nexus.*****.vn
+ubuntu@dr-bigdata-aiml-03:/u01/user-data/vint1/finetune_whisper_build$ ls -l "/u01/user-data/vint1/finetune_whisper_build/cuda_libs/lib64/"
+total 3182828
+-rw-r--r-- 1 ubuntu ubuntu 255649752 Oct 13 03:28 libcudnn_adv.so
+-rw-r--r-- 1 ubuntu ubuntu 255649752 Oct 13 03:28 libcudnn_adv.so.9
+-rw-r--r-- 1 ubuntu ubuntu 255649752 Oct 13 03:28 libcudnn_adv.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu   4903984 Oct 13 03:28 libcudnn_cnn.so
+-rw-r--r-- 1 ubuntu ubuntu   4903984 Oct 13 03:28 libcudnn_cnn.so.9
+-rw-r--r-- 1 ubuntu ubuntu   4903984 Oct 13 03:28 libcudnn_cnn.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu 581665056 Oct 13 03:28 libcudnn_engines_precompiled.so
+-rw-r--r-- 1 ubuntu ubuntu 581665056 Oct 13 03:28 libcudnn_engines_precompiled.so.9
+-rw-r--r-- 1 ubuntu ubuntu 581665056 Oct 13 03:28 libcudnn_engines_precompiled.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu  26951112 Oct 13 03:28 libcudnn_engines_runtime_compiled.so
+-rw-r--r-- 1 ubuntu ubuntu  26951112 Oct 13 03:28 libcudnn_engines_runtime_compiled.so.9
+-rw-r--r-- 1 ubuntu ubuntu  26951112 Oct 13 03:28 libcudnn_engines_runtime_compiled.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu   3134416 Oct 13 03:28 libcudnn_graph.so
+-rw-r--r-- 1 ubuntu ubuntu   3134416 Oct 13 03:28 libcudnn_graph.so.9
+-rw-r--r-- 1 ubuntu ubuntu   3134416 Oct 13 03:28 libcudnn_graph.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu  56541008 Oct 13 03:28 libcudnn_heuristic.so
+-rw-r--r-- 1 ubuntu ubuntu  56541008 Oct 13 03:28 libcudnn_heuristic.so.9
+-rw-r--r-- 1 ubuntu ubuntu  56541008 Oct 13 03:28 libcudnn_heuristic.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu 118055872 Oct 13 03:28 libcudnn_ops.so
+-rw-r--r-- 1 ubuntu ubuntu 118055872 Oct 13 03:28 libcudnn_ops.so.9
+-rw-r--r-- 1 ubuntu ubuntu 118055872 Oct 13 03:28 libcudnn_ops.so.9.1.0
+-rw-r--r-- 1 ubuntu ubuntu 118055872 Oct 13 03:28 libcudnn_ops.so.9.8.0
+-rw-r--r-- 1 ubuntu ubuntu    125136 Oct 13 03:28 libcudnn.so
+-rw-r--r-- 1 ubuntu ubuntu    125136 Oct 13 03:28 libcudnn.so.9
+-rw-r--r-- 1 ubuntu ubuntu    125136 Oct 13 03:28 libcudnn.so.9.8.0

@@ -1,4 +1,3 @@
-
 ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetune_whisper$ docker logs -f lora-finetuning-job
 
 ==========
@@ -15,7 +14,12 @@ https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
 
 A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
 
+trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+Original train size: 634158
+Filtered train size: 633414
+Original val size: 7500
+Filtered val size: 7494
 Traceback (most recent call last):
-  File "/app/finetune_lora.py", line 18, in <module>
-    logging.set_verbosity_error()
-AttributeError: module 'logging' has no attribute 'set_verbosity_error'
+  File "/app/finetune_lora.py", line 143, in <module>
+    training_args = Seq2SeqTrainingArguments(
+TypeError: Seq2SeqTrainingArguments.__init__() got an unexpected keyword argument 'generation_kwargs'

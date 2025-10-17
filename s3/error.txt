@@ -1,34 +1,14 @@
-
-root@2e72efe2bb47:/app# cd scripts
-root@2e72efe2bb47:/app/scripts# ls
-concat_audio.py  upload_to_s3.py
-root@2e72efe2bb47:/app/scripts# python3 upload_to_s3.py
-Uploading files from '/app/audio_chunks' to 's3://lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/'...
-  Error uploading Hop về KHUT_445.wav: SSL validation failed for https://s3-lhl-01.icbv.com/lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/Hop%20v%E1%BB%81%20KHUT_445.wav [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1010)
-  Error uploading Hrft_470.wav: SSL validation failed for https://s3-lhl-01.icbv.com/lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/Hrft_470.wav [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1010)
-^CTraceback (most recent call last):
-  File "/app/scripts/upload_to_s3.py", line 31, in <module>
-    upload_folder_to_s3(AUDIO_FOLDER, S3_BUCKET_NAME, S3_PROJECT_PREFIX, S3_ENDPOINT_URL)
-  File "/app/scripts/upload_to_s3.py", line 17, in upload_folder_to_s3
-    s3_client.upload_file(local_path, bucket_name, s3_key)
-  File "/usr/local/lib/python3.12/dist-packages/botocore/context.py", line 123, in wrapper
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/boto3/s3/inject.py", line 175, in upload_file
-    return transfer.upload_file(
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/boto3/s3/transfer.py", line 372, in upload_file
-    future.result()
-  File "/usr/local/lib/python3.12/dist-packages/s3transfer/futures.py", line 114, in result
-    raise e
-  File "/usr/local/lib/python3.12/dist-packages/s3transfer/futures.py", line 111, in result
-    return self._coordinator.result()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/s3transfer/futures.py", line 267, in result
-    self._done_event.wait(MAXINT)
-  File "/usr/lib/python3.12/threading.py", line 655, in wait
-    signaled = self._cond.wait(timeout)
-               ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/threading.py", line 355, in wait
-    waiter.acquire()
-KeyboardInterrupt
+File: your-project-folder/.aws/credentials
+code
+Ini
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID_HERE
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY_HERE
+Make sure the header is exactly [default].
+Do not use any quotation marks around the keys.
+File: your-project-folder/.aws/config
+code
+Ini
+[default]
+region = your-company-bucket-region
+The region is required. Even if it's a generic name for your on-premises system, it needs to be present.

@@ -1,14 +1,6 @@
-File: your-project-folder/.aws/credentials
-code
-Ini
-[default]
-aws_access_key_id = YOUR_ACCESS_KEY_ID_HERE
-aws_secret_access_key = YOUR_SECRET_ACCESS_KEY_HERE
-Make sure the header is exactly [default].
-Do not use any quotation marks around the keys.
-File: your-project-folder/.aws/config
-code
-Ini
-[default]
-region = your-company-bucket-region
-The region is required. Even if it's a generic name for your on-premises system, it needs to be present.
+warnings.warn(
+  Successfully uploaded dịd_184.wav to hist-audio/labeling-data/dịd_184.wav
+/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 's3-lhl-01.icbv.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+  Successfully uploaded Họp UBCL 072025_371.wav to hist-audio/labeling-data/Họp UBCL 072025_371.wav
+/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 's3-lhl-01.icbv.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings

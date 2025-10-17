@@ -1,6 +1,84 @@
-warnings.warn(
-  Successfully uploaded dịd_184.wav to hist-audio/labeling-data/dịd_184.wav
-/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 's3-lhl-01.icbv.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
-  warnings.warn(
-  Successfully uploaded Họp UBCL 072025_371.wav to hist-audio/labeling-data/Họp UBCL 072025_371.wav
-/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host 's3-lhl-01.icbv.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+import os
+import boto3
+from botocore.exceptions import ClientError
+
+# Define the folder path inside the container
+AUDIO_FOLDER = "/app/concatenated_audio"
+
+def s3_object_exists(s3_client, bucket_name, object_key):
+    """
+    Checks if an object exists in an S3 bucket using an efficient head_object call.
+    
+    Args:
+        s3_client: The boto3 S3 client.
+        bucket_name (str): The name of the S3 bucket.
+        object_key (str): The full key (path) of the object in S3.
+
+    Returns:
+        bool: True if the object exists, False otherwise.
+    """
+    try:
+        s3_client.head_object(Bucket=bucket_name, Key=object_key)
+        return True
+    except ClientError as e:
+        # If the error code is 404, the object does not exist.
+        if e.response['Error']['Code'] == '404':
+            return False
+        else:
+            # For other errors (like permissions), raise the exception.
+            print(f"  Warning: Received an unexpected error checking for object '{object_key}': {e}")
+            raise
+
+def upload_folder_to_s3(local_folder, bucket_name, s3_prefix, endpoint_url):
+    """
+    Uploads files to a custom S3 endpoint, skipping files that already exist.
+    """
+    print(f"Connecting to S3 endpoint: {endpoint_url}")
+    
+    # Create the S3 client, disabling SSL verification for self-signed certs
+    s3_client = boto3.client('s3', endpoint_url=endpoint_url, verify=False)
+
+    print(f"Syncing local folder '{local_folder}' to 's3://{bucket_name}/{s3_prefix}'...")
+
+    if not os.path.isdir(local_folder):
+        print(f"Error: Local folder '{local_folder}' not found inside the container.")
+        return
+
+    # Get a list of local files to process
+    local_files = [f for f in os.listdir(local_folder) if os.path.isfile(os.path.join(local_folder, f))]
+
+    if not local_files:
+        print("No files found in the local folder to upload.")
+        return
+
+    for filename in local_files:
+        local_path = os.path.join(local_folder, filename)
+        s3_key = f"{s3_prefix}{filename}"
+
+        try:
+            # --- NEW LOGIC ---
+            # Check if the file already exists in S3 before uploading
+            if s3_object_exists(s3_client, bucket_name, s3_key):
+                print(f"  [SKIP] '{filename}' already exists in S3.")
+                continue  # Move to the next file
+            
+            # If it doesn't exist, proceed with the upload
+            print(f"  [UPLOAD] '{filename}'...")
+            s3_client.upload_file(local_path, bucket_name, s3_key)
+            print(f"    -> Successfully uploaded.")
+
+        except Exception as e:
+            print(f"  [ERROR] Failed to process '{filename}': {e}")
+
+    print("Sync complete!")
+
+# --- Configuration from Environment Variables ---
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+S3_PROJECT_PREFIX = os.environ.get("S3_PROJECT_PREFIX")
+S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
+
+if __name__ == "__main__":
+    if not all([S3_BUCKET_NAME, S3_PROJECT_PREFIX, S3_ENDPOINT_URL]):
+        print("Error: One or more environment variables are not set in docker-compose.yml")
+    else:
+        upload_folder_to_s3(AUDIO_FOLDER, S3_BUCKET_NAME, S3_PROJECT_PREFIX, S3_ENDPOINT_URL)

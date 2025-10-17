@@ -1,55 +1,34 @@
 
-root@cb8044921739:/app# printenv | grep S3
-S3_ENDPOINT_URL=*****
-S3_BUCKET_NAME=****
-S3_PROJECT_PREFIX=hist-audio/labeling-data/
-root@cb8044921739:/app# ls
-Hop_loyalty_full.wav  __pycache__   concatenated_audio  infer_faster_whisper.py  models     processing          requirements.txt  shared_audio  utils
-__init__.py           audio_chunks  enrollment_samples  main.py                  models.py  pydantic_models.py  scripts           test.wav
-root@cb8044921739:/app# cd scripts
-root@cb8044921739:/app/scripts# ls
+root@2e72efe2bb47:/app# cd scripts
+root@2e72efe2bb47:/app/scripts# ls
 concat_audio.py  upload_to_s3.py
-root@cb8044921739:/app/scripts# python3 upload_to_s3.py
-Traceback (most recent call last):
+root@2e72efe2bb47:/app/scripts# python3 upload_to_s3.py
+Uploading files from '/app/audio_chunks' to 's3://lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/'...
+  Error uploading Hop về KHUT_445.wav: SSL validation failed for https://s3-lhl-01.icbv.com/lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/Hop%20v%E1%BB%81%20KHUT_445.wav [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1010)
+  Error uploading Hrft_470.wav: SSL validation failed for https://s3-lhl-01.icbv.com/lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/Hrft_470.wav [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1010)
+^CTraceback (most recent call last):
   File "/app/scripts/upload_to_s3.py", line 31, in <module>
     upload_folder_to_s3(AUDIO_FOLDER, S3_BUCKET_NAME, S3_PROJECT_PREFIX, S3_ENDPOINT_URL)
-  File "/app/scripts/upload_to_s3.py", line 8, in upload_folder_to_s3
-    s3_client = boto3.client('s3', endpoint_url=endpoint_url)
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/boto3/__init__.py", line 92, in client
-    return _get_default_session().client(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/boto3/__init__.py", line 80, in _get_default_session
-    setup_default_session()
-  File "/usr/local/lib/python3.12/dist-packages/boto3/__init__.py", line 34, in setup_default_session
-    DEFAULT_SESSION = Session(**kwargs)
-                      ^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/boto3/session.py", line 108, in __init__
-    self._setup_loader()
-  File "/usr/local/lib/python3.12/dist-packages/boto3/session.py", line 149, in _setup_loader
-    self._loader = self._session.get_component('data_loader')
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/session.py", line 808, in get_component
-    return self._components.get_component(name)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/session.py", line 1170, in get_component
-    self._components[name] = factory()
-                             ^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/session.py", line 200, in <lambda>
-    lambda: create_loader(self.get_config_variable('data_path')),
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/session.py", line 324, in get_config_variable
-    return self.get_component('config_store').get_config_variable(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/configprovider.py", line 512, in get_config_variable
-    return provider.provide()
-           ^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/configprovider.py", line 718, in provide
-    value = provider.provide()
-            ^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/configprovider.py", line 805, in provide
-    scoped_config = self._session.get_scoped_config()
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/dist-packages/botocore/session.py", line 423, in get_scoped_config
-    raise ProfileNotFound(profile=profile_name)
-botocore.exceptions.ProfileNotFound: The config profile (default) could not be found
+  File "/app/scripts/upload_to_s3.py", line 17, in upload_folder_to_s3
+    s3_client.upload_file(local_path, bucket_name, s3_key)
+  File "/usr/local/lib/python3.12/dist-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/boto3/s3/inject.py", line 175, in upload_file
+    return transfer.upload_file(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/boto3/s3/transfer.py", line 372, in upload_file
+    future.result()
+  File "/usr/local/lib/python3.12/dist-packages/s3transfer/futures.py", line 114, in result
+    raise e
+  File "/usr/local/lib/python3.12/dist-packages/s3transfer/futures.py", line 111, in result
+    return self._coordinator.result()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/s3transfer/futures.py", line 267, in result
+    self._done_event.wait(MAXINT)
+  File "/usr/lib/python3.12/threading.py", line 655, in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt

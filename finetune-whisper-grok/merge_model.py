@@ -4,11 +4,15 @@ import json
 import os
 
 BASE_MODEL_PATH = "./model"
-ADAPTER_PATH = "./new_whisper_vietbud500_adpapter"
+ADAPTER_PATH = "./new_whisper_vietbud500_adapter"  # FIXED: Corrected typo from "adpapter"
 MERGED_MODEL_SAVE_PATH = "./new_whisper_vietbud500_merged_model"
 
 print(f"Loading base model from: {BASE_MODEL_PATH}")
-base_model = WhisperForConditionalGeneration.from_pretrained(BASE_MODEL_PATH, device_map="auto")
+base_model = WhisperForConditionalGeneration.from_pretrained(
+    BASE_MODEL_PATH, 
+    device_map="auto",
+    torch_dtype=torch.bfloat16  # ENHANCED: Match training dtype for consistency
+)
 
 print(f"Loading and merging LoRA adapter from: {ADAPTER_PATH}")
 model = PeftModel.from_pretrained(base_model, ADAPTER_PATH)
@@ -42,13 +46,14 @@ if os.path.exists(config_path):
             [3, 11],
             [3, 14]
         ]
+        print("ENHANCED: Added alignment_heads for Turbo compatibility.")
     
     # Ensure other CT2-friendly keys (if missing)
     if "ctc_loss_reduction" not in config:
         config["ctc_loss_reduction"] = "mean"
     if "ctc_zero_infinity" not in config:
         config["ctc_zero_infinity"] = True
-    if "do_sample" not in config:  # For generation stability
+    if "do_sample" not in config:
         config["do_sample"] = False
     if "num_beams" not in config:
         config["num_beams"] = 1

@@ -1,1 +1,9 @@
-docker run -d --name label-studio -p 8081:8080 -v /u01/user-data/vint1/label-studio/s3-lhl-01-we.icbv.crt:/tmp/ca-bundle.crt:ro -e AWS_CA_BUNDLE=/tmp/ca-bundle.crt -e LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_INVITE=true -v /u01/user-data/vint1/label-studio/data:/label-studio/data --restart unless-stopped heartexlabs/label-studio
+There was an issue loading URL from $audio value
+
+Things to look out for:
+
+URL is valid
+URL scheme matches the service scheme, i.e. https and https
+The static server has wide-open CORS, more on that here
+Technical description: HTTP error status: 0
+URL: /tasks/1/resolve/?fileuri=czM6Ly9saGwtczMtYTU0NC1haXBhZ2UtYmJoL2hpc3QtYXVkaW8vbGFiZWxpbmctZGF0YS8xMjA2IEhvcCBjb25nIGRvYW5fMC53YXY=

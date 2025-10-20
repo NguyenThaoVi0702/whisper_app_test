@@ -1,9 +1,10 @@
-There was an issue loading URL from $audio value
+Error logs for s3 storage 4 in project 3 and job null:
 
-Things to look out for:
+  File "/label-studio/label_studio/io_storages/s3/utils.py", line 164, in wrapper
+    raise S3StorageError(
+    ...<2 lines>...
+    ) from None
+io_storages.s3.utils.S3StorageError: Debugging info is not available for s3 endpoints on domain: icbv.com. Please contact your Label Studio devops team if you require detailed error reporting for this domain.
 
-URL is valid
-URL scheme matches the service scheme, i.e. https and https
-The static server has wide-open CORS, more on that here
-Technical description: HTTP error status: 0
-URL: /tasks/1/resolve/?fileuri=czM6Ly9saGwtczMtYTU0NC1haXBhZ2UtYmJoL2hpc3QtYXVkaW8vbGFiZWxpbmctZGF0YS8xMjA2IEhvcCBjb25nIGRvYW5fMC53YXY=
+
+meta = {"attempts":1,"time_queued":"2025-10-20 09:41:59.377923+00:00","time_in_progress":"2025-10-20 09:41:59.407416+00:00","time_last_ping":"2025-10-20 10:23:35.173523+00:00","duration":0,"tasks_existed":0,"time_failure":"2025-10-20 10:23:38.486242+00:00"}

@@ -1,84 +1,163 @@
-import os
-import boto3
-from botocore.exceptions import ClientError
+Traceback (most recent call last):
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/util/ssl_.py", line 458, in ssl_wrap_socket
+    context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory
 
-# Define the folder path inside the container
-AUDIO_FOLDER = "/app/concatenated_audio"
+The above exception was the direct cause of the following exception:
 
-def s3_object_exists(s3_client, bucket_name, object_key):
-    """
-    Checks if an object exists in an S3 bucket using an efficient head_object call.
-    
-    Args:
-        s3_client: The boto3 S3 client.
-        bucket_name (str): The name of the S3 bucket.
-        object_key (str): The full key (path) of the object in S3.
+Traceback (most recent call last):
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/httpsession.py", line 464, in send
+    urllib_response = conn.urlopen(
+        method=request.method,
+    ...<7 lines>...
+        chunked=self._chunked(request.headers),
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/util/retry.py", line 449, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 790, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+        sock=sock,
+    ...<14 lines>...
+        assert_fingerprint=self.assert_fingerprint,
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/connection.py", line 969, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+        sock=sock,
+    ...<8 lines>...
+        tls_in_tls=tls_in_tls,
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/urllib3/util/ssl_.py", line 460, in ssl_wrap_socket
+    raise SSLError(e) from e
+urllib3.exceptions.SSLError: [Errno 21] Is a directory
 
-    Returns:
-        bool: True if the object exists, False otherwise.
-    """
-    try:
-        s3_client.head_object(Bucket=bucket_name, Key=object_key)
-        return True
-    except ClientError as e:
-        # If the error code is 404, the object does not exist.
-        if e.response['Error']['Code'] == '404':
-            return False
-        else:
-            # For other errors (like permissions), raise the exception.
-            print(f"  Warning: Received an unexpected error checking for object '{object_key}': {e}")
-            raise
+During handling of the above exception, another exception occurred:
 
-def upload_folder_to_s3(local_folder, bucket_name, s3_prefix, endpoint_url):
-    """
-    Uploads files to a custom S3 endpoint, skipping files that already exist.
-    """
-    print(f"Connecting to S3 endpoint: {endpoint_url}")
-    
-    # Create the S3 client, disabling SSL verification for self-signed certs
-    s3_client = boto3.client('s3', endpoint_url=endpoint_url, verify=False)
-
-    print(f"Syncing local folder '{local_folder}' to 's3://{bucket_name}/{s3_prefix}'...")
-
-    if not os.path.isdir(local_folder):
-        print(f"Error: Local folder '{local_folder}' not found inside the container.")
-        return
-
-    # Get a list of local files to process
-    local_files = [f for f in os.listdir(local_folder) if os.path.isfile(os.path.join(local_folder, f))]
-
-    if not local_files:
-        print("No files found in the local folder to upload.")
-        return
-
-    for filename in local_files:
-        local_path = os.path.join(local_folder, filename)
-        s3_key = f"{s3_prefix}{filename}"
-
-        try:
-            # --- NEW LOGIC ---
-            # Check if the file already exists in S3 before uploading
-            if s3_object_exists(s3_client, bucket_name, s3_key):
-                print(f"  [SKIP] '{filename}' already exists in S3.")
-                continue  # Move to the next file
-            
-            # If it doesn't exist, proceed with the upload
-            print(f"  [UPLOAD] '{filename}'...")
-            s3_client.upload_file(local_path, bucket_name, s3_key)
-            print(f"    -> Successfully uploaded.")
-
-        except Exception as e:
-            print(f"  [ERROR] Failed to process '{filename}': {e}")
-
-    print("Sync complete!")
-
-# --- Configuration from Environment Variables ---
-S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
-S3_PROJECT_PREFIX = os.environ.get("S3_PROJECT_PREFIX")
-S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
-
-if __name__ == "__main__":
-    if not all([S3_BUCKET_NAME, S3_PROJECT_PREFIX, S3_ENDPOINT_URL]):
-        print("Error: One or more environment variables are not set in docker-compose.yml")
-    else:
-        upload_folder_to_s3(AUDIO_FOLDER, S3_BUCKET_NAME, S3_PROJECT_PREFIX, S3_ENDPOINT_URL)
+Traceback (most recent call last):
+  File "/label-studio/label_studio/io_storages/s3/utils.py", line 158, in wrapper
+    return func(self, *args, **kwargs)
+  File "/label-studio/label_studio/io_storages/s3/models.py", line 117, in validate_connection
+    client.head_bucket(Bucket=self.bucket)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/client.py", line 601, in _api_call
+    return self._make_api_call(operation_name, kwargs)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/client.py", line 1056, in _make_api_call
+    http, parsed_response = self._make_request(
+                            ~~~~~~~~~~~~~~~~~~^
+        operation_model, request_dict, request_context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/client.py", line 1080, in _make_request
+    return self._endpoint.make_request(operation_model, request_dict)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/endpoint.py", line 118, in make_request
+    return self._send_request(request_dict, operation_model)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/endpoint.py", line 199, in _send_request
+    while self._needs_retry(
+          ~~~~~~~~~~~~~~~~~^
+        attempts,
+        ^^^^^^^^^
+    ...<3 lines>...
+        exception,
+        ^^^^^^^^^^
+    ):
+    ^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/endpoint.py", line 359, in _needs_retry
+    responses = self._event_emitter.emit(
+        event_name,
+    ...<5 lines>...
+        request_dict=request_dict,
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/hooks.py", line 412, in emit
+    return self._emitter.emit(aliased_event_name, **kwargs)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/hooks.py", line 256, in emit
+    return self._emit(event_name, kwargs)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/hooks.py", line 239, in _emit
+    response = handler(**kwargs)
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/retryhandler.py", line 207, in __call__
+    if self._checker(**checker_kwargs):
+       ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/retryhandler.py", line 284, in __call__
+    should_retry = self._should_retry(
+        attempt_number, response, caught_exception
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/retryhandler.py", line 320, in _should_retry
+    return self._checker(attempt_number, response, caught_exception)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/retryhandler.py", line 363, in __call__
+    checker_response = checker(
+        attempt_number, response, caught_exception
+    )
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/retryhandler.py", line 247, in __call__
+    return self._check_caught_exception(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        attempt_number, caught_exception
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/retryhandler.py", line 416, in _check_caught_exception
+    raise caught_exception
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/endpoint.py", line 278, in _do_get_response
+    http_response = self._send(request)
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/endpoint.py", line 382, in _send
+    return self.http_session.send(request)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/botocore/httpsession.py", line 491, in send
+    raise SSLError(endpoint_url=request.url, error=e)
+botocore.exceptions.SSLError: SSL validation failed for https://s3-lhl-01.icbv.com/lhl-s3-a544-aipage-bbh [Errno 21] Is a directory
+[2025-10-20 02:45:18,088] [core.utils.common::custom_exception_handler::97] [ERROR] 3db731f1-0daf-4884-acc4-b9b8d4c1c5e0 Debugging info is not available for s3 endpoints on domain: icbv.com. Please contact your Label Studio devops team if you require detailed error reporting for this domain.
+Traceback (most recent call last):
+  File "/label-studio/.venv/lib/python3.13/site-packages/rest_framework/views.py", line 506, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/label-studio/.venv/lib/python3.13/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/label-studio/.venv/lib/python3.13/site-packages/rest_framework/generics.py", line 194, in post
+    return self.create(request, *args, **kwargs)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/label_studio/io_storages/api.py", line 156, in create
+    validate_storage_instance(request, self.serializer_class)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/label_studio/io_storages/functions.py", line 48, in validate_storage_instance
+    serializer.is_valid(raise_exception=True)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/rest_framework/serializers.py", line 223, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/label-studio/.venv/lib/python3.13/site-packages/rest_framework/serializers.py", line 445, in run_validation
+    value = self.validate(value)
+  File "/label-studio/label_studio/io_storages/s3/serializers.py", line 50, in validate
+    storage.validate_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/label-studio/label_studio/io_storages/s3/utils.py", line 164, in wrapper
+    raise S3StorageError(
+    ...<2 lines>...
+    ) from None
+io_storages.s3.utils.S3StorageError: Debugging info is not available for s3 endpoints on domain: icbv.com. Please contact your Label Studio devops team if you require detailed error reporting for this domain.

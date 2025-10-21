@@ -1,10 +1,6 @@
-Error logs for s3 storage 4 in project 3 and job null:
-
-  File "/label-studio/label_studio/io_storages/s3/utils.py", line 164, in wrapper
-    raise S3StorageError(
-    ...<2 lines>...
-    ) from None
-io_storages.s3.utils.S3StorageError: Debugging info is not available for s3 endpoints on domain: icbv.com. Please contact your Label Studio devops team if you require detailed error reporting for this domain.
-
-
-meta = {"attempts":1,"time_queued":"2025-10-20 09:41:59.377923+00:00","time_in_progress":"2025-10-20 09:41:59.407416+00:00","time_last_ping":"2025-10-20 10:23:35.173523+00:00","duration":0,"tasks_existed":0,"time_failure":"2025-10-20 10:23:38.486242+00:00"}
+cob_dt	TYPE	org_open_bal	vnd_open_bal
+0	2024-12-09	SUM	0.000000e+00	1.760230e+15
+1	2024-12-09	USD	3.108622e+09	7.886885e+13
+2	2024-12-09	VND	1.681113e+15	1.681113e+15
+3	2024-12-10	SUM	0.000000e+00	1.765070e+15
+4	2024-12-10	USD	3.119159e+09	7.914553e+13

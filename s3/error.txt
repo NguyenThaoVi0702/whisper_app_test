@@ -1,5 +1,53 @@
-label-studio  | [2025-10-21 02:50:29,769] [django.server::log_message::213] [INFO] "PATCH /api/drafts/9?project=3 HTTP/1.1" 200 946
-label-studio  | [2025-10-21 02:50:42,796] [urllib3.connectionpool::urlopen::868] [WARNING] Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f479c4bed50>: Failed to resolve 'o227124.ingest.sentry.io' ([Errno -2] Name or service not known)")': /api/5820521/envelope/
-label-studio  | [2025-10-21 02:50:42,799] [urllib3.connectionpool::urlopen::868] [WARNING] Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f479c4be210>: Failed to resolve 'o227124.ingest.sentry.io' ([Errno -2] Name or service not known)")': /api/5820521/envelope/
-label-studio  | [2025-10-21 02:50:42,801] [urllib3.connectionpool::urlopen::868] [WARNING] Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f479c4bc910>: Failed to resolve 'o227124.ingest.sentry.io' ([Errno -2] Name or service not known)")': /api/5820521/envelope/
-label-studio  | [2025-10-21 02:50:51,769] [users.functions.last_activity::set_user_last_activity::50] [WARNING] Redis not connected, skipping activity update for user 2
+df = pd.read_sql(query, engine)
+
+# Convert 'cob_dt' to datetime objects for proper plotting
+df['cob_dt'] = pd.to_datetime(df['cob_dt'])
+
+# --- Create the Interactive Plot with a Secondary Y-Axis ---
+
+# Create figure with secondary y-axis
+fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+# Filter data for each type for clarity
+df_sum = df[df['TYPE'] == 'SUM']
+df_vnd = df[df['TYPE'] == 'VND']
+df_usd = df[df['TYPE'] == 'USD']
+
+# Add SUM and VND traces to the primary y-axis
+fig.add_trace(
+    go.Scatter(x=df_sum['cob_dt'], y=df_sum['vnd_open_bal'], name='SUM', mode='lines+markers'),
+    secondary_y=False,
+)
+fig.add_trace(
+    go.Scatter(x=df_vnd['cob_dt'], y=df_vnd['vnd_open_bal'], name='VND', mode='lines+markers'),
+    secondary_y=False,
+)
+
+# Add USD trace to the secondary y-axis
+fig.add_trace(
+    go.Scatter(x=df_usd['cob_dt'], y=df_usd['vnd_open_bal'], name='USD', mode='lines+markers'),
+    secondary_y=True,
+)
+
+# --- Add figure title and axis labels ---
+fig.update_layout(
+    title_text='Interactive Open Balance Time Series (VND Equivalent)',
+    legend_title_text='Type',
+    # Keep the legend items at the top left
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    )
+)
+
+fig.update_xaxes(title_text='Date')
+
+# Set y-axes titles
+fig.update_yaxes(title_text='<b>Primary Axis</b> (SUM and VND)', secondary_y=False)
+fig.update_yaxes(title_text='<b>Secondary Axis</b> (USD)', secondary_y=True)
+
+# Show the interactive figure
+fig.show()

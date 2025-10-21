@@ -1,0 +1,26 @@
+<View>
+  <Labels name="label" toName="audio" choice="single">
+    <Label value="Noise" background="#E74C3C" />
+    <Label value="Speaker 1" background="#4A90E2" />
+    <Label value="Speaker 2" background="#7ED321" />
+    <Label value="Speaker 3" background="#F5A623" />
+    <Label value="Speaker 4" background="#50E3C2" />
+    <Label value="Speaker 5" background="#9B51E3" />
+  </Labels>
+  <Audio name="audio" value="$audio" zoom="true" hotkey="space" />
+  <View 
+    visibleWhen="region-selected" 
+    whenTagName="label" 
+    whenLabelValue="Speaker 1,Speaker 2,Speaker 3,Speaker 4,Speaker 5"
+    style="margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+    <Header value="Transcription:" />
+    <TextArea 
+      name="transcription" 
+      toName="audio" 
+      perRegion="true" 
+      rows="4" 
+      editable="true" 
+      required="true" 
+      placeholder="Enter the spoken text here..." />
+  </View>
+</View>

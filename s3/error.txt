@@ -1,12 +1,5 @@
-label-studio  | [2025-10-21 02:46:36,061] [django.server::log_message::213] [INFO] "GET /api/projects/3 HTTP/1.1" 200 3100
-label-studio  | [2025-10-21 02:46:36,206] [django.server::log_message::213] [INFO] "GET /api/dm/project?project=3 HTTP/1.1" 200 3284
-label-studio  | [2025-10-21 02:46:36,206] [django.server::log_message::213] [INFO] "GET /api/dm/project?project=3 HTTP/1.1" 200 3284
-label-studio  | [2025-10-21 02:46:36,321] [django.server::log_message::213] [INFO] "GET /api/tasks?page=1&page_size=30&view=3&project=3 HTTP/1.1" 200 21785
-label-studio  | [2025-10-21 02:46:36,321] [django.server::log_message::213] [INFO] "GET /api/tasks?page=1&page_size=30&view=3&project=3 HTTP/1.1" 200 21785
-label-studio  | [2025-10-21 02:46:37,012] [django.server::log_message::213] [INFO] "GET /api/projects/3 HTTP/1.1" 200 3100
-label-studio  | [2025-10-21 02:46:37,012] [django.server::log_message::213] [INFO] "GET /api/projects/3 HTTP/1.1" 200 3100
-label-studio  | [2025-10-21 02:46:37,165] [django.request::log_response::253] [WARNING] Not Found: /heidi-tips/
-label-studio  | [2025-10-21 02:46:37,165] [django.request::log_response::253] [WARNING] Not Found: /heidi-tips/
-label-studio  | [2025-10-21 02:46:37,166] [django.server::log_message::213] [WARNING] "GET /heidi-tips HTTP/1.1" 404 2
-label-studio  | [2025-10-21 02:46:37,166] [django.server::log_message::213] [WARNING] "GET /heidi-tips HTTP/1.1" 404 2
-label-studio  | [2025-10-21 02:46:38,212] [users.functions.last_activity::set_user_last_activity::50] [WARNING] Redis not connected, skipping activity update for user 3
+label-studio  | [2025-10-21 02:50:29,769] [django.server::log_message::213] [INFO] "PATCH /api/drafts/9?project=3 HTTP/1.1" 200 946
+label-studio  | [2025-10-21 02:50:42,796] [urllib3.connectionpool::urlopen::868] [WARNING] Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f479c4bed50>: Failed to resolve 'o227124.ingest.sentry.io' ([Errno -2] Name or service not known)")': /api/5820521/envelope/
+label-studio  | [2025-10-21 02:50:42,799] [urllib3.connectionpool::urlopen::868] [WARNING] Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f479c4be210>: Failed to resolve 'o227124.ingest.sentry.io' ([Errno -2] Name or service not known)")': /api/5820521/envelope/
+label-studio  | [2025-10-21 02:50:42,801] [urllib3.connectionpool::urlopen::868] [WARNING] Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f479c4bc910>: Failed to resolve 'o227124.ingest.sentry.io' ([Errno -2] Name or service not known)")': /api/5820521/envelope/
+label-studio  | [2025-10-21 02:50:51,769] [users.functions.last_activity::set_user_last_activity::50] [WARNING] Redis not connected, skipping activity update for user 2

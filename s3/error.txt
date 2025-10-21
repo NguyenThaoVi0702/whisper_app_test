@@ -1,6 +1,12 @@
-cob_dt	TYPE	org_open_bal	vnd_open_bal
-0	2024-12-09	SUM	0.000000e+00	1.760230e+15
-1	2024-12-09	USD	3.108622e+09	7.886885e+13
-2	2024-12-09	VND	1.681113e+15	1.681113e+15
-3	2024-12-10	SUM	0.000000e+00	1.765070e+15
-4	2024-12-10	USD	3.119159e+09	7.914553e+13
+label-studio  | [2025-10-21 02:46:36,061] [django.server::log_message::213] [INFO] "GET /api/projects/3 HTTP/1.1" 200 3100
+label-studio  | [2025-10-21 02:46:36,206] [django.server::log_message::213] [INFO] "GET /api/dm/project?project=3 HTTP/1.1" 200 3284
+label-studio  | [2025-10-21 02:46:36,206] [django.server::log_message::213] [INFO] "GET /api/dm/project?project=3 HTTP/1.1" 200 3284
+label-studio  | [2025-10-21 02:46:36,321] [django.server::log_message::213] [INFO] "GET /api/tasks?page=1&page_size=30&view=3&project=3 HTTP/1.1" 200 21785
+label-studio  | [2025-10-21 02:46:36,321] [django.server::log_message::213] [INFO] "GET /api/tasks?page=1&page_size=30&view=3&project=3 HTTP/1.1" 200 21785
+label-studio  | [2025-10-21 02:46:37,012] [django.server::log_message::213] [INFO] "GET /api/projects/3 HTTP/1.1" 200 3100
+label-studio  | [2025-10-21 02:46:37,012] [django.server::log_message::213] [INFO] "GET /api/projects/3 HTTP/1.1" 200 3100
+label-studio  | [2025-10-21 02:46:37,165] [django.request::log_response::253] [WARNING] Not Found: /heidi-tips/
+label-studio  | [2025-10-21 02:46:37,165] [django.request::log_response::253] [WARNING] Not Found: /heidi-tips/
+label-studio  | [2025-10-21 02:46:37,166] [django.server::log_message::213] [WARNING] "GET /heidi-tips HTTP/1.1" 404 2
+label-studio  | [2025-10-21 02:46:37,166] [django.server::log_message::213] [WARNING] "GET /heidi-tips HTTP/1.1" 404 2
+label-studio  | [2025-10-21 02:46:38,212] [users.functions.last_activity::set_user_last_activity::50] [WARNING] Redis not connected, skipping activity update for user 3

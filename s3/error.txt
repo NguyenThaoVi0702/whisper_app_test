@@ -1,53 +1,6 @@
-df = pd.read_sql(query, engine)
+Error logs for s3 storage 4 in project 3 and job null:
 
-# Convert 'cob_dt' to datetime objects for proper plotting
-df['cob_dt'] = pd.to_datetime(df['cob_dt'])
+It appears the job was failed because the last ping time is too old, and no traceback information is available.
+This typically occurs if job was manually removed or workers reloaded unexpectedly.
 
-# --- Create the Interactive Plot with a Secondary Y-Axis ---
-
-# Create figure with secondary y-axis
-fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-# Filter data for each type for clarity
-df_sum = df[df['TYPE'] == 'SUM']
-df_vnd = df[df['TYPE'] == 'VND']
-df_usd = df[df['TYPE'] == 'USD']
-
-# Add SUM and VND traces to the primary y-axis
-fig.add_trace(
-    go.Scatter(x=df_sum['cob_dt'], y=df_sum['vnd_open_bal'], name='SUM', mode='lines+markers'),
-    secondary_y=False,
-)
-fig.add_trace(
-    go.Scatter(x=df_vnd['cob_dt'], y=df_vnd['vnd_open_bal'], name='VND', mode='lines+markers'),
-    secondary_y=False,
-)
-
-# Add USD trace to the secondary y-axis
-fig.add_trace(
-    go.Scatter(x=df_usd['cob_dt'], y=df_usd['vnd_open_bal'], name='USD', mode='lines+markers'),
-    secondary_y=True,
-)
-
-# --- Add figure title and axis labels ---
-fig.update_layout(
-    title_text='Interactive Open Balance Time Series (VND Equivalent)',
-    legend_title_text='Type',
-    # Keep the legend items at the top left
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    )
-)
-
-fig.update_xaxes(title_text='Date')
-
-# Set y-axes titles
-fig.update_yaxes(title_text='<b>Primary Axis</b> (SUM and VND)', secondary_y=False)
-fig.update_yaxes(title_text='<b>Secondary Axis</b> (USD)', secondary_y=True)
-
-# Show the interactive figure
-fig.show()
+meta = {"attempts":5,"time_queued":"2025-10-21 09:04:41.901580+00:00","time_in_progress":"2025-10-21 09:04:41.925135+00:00","time_last_ping":"2025-10-21 09:05:54.168908+00:00","duration":72.243773,"tasks_existed":212}

@@ -1,6 +1,36 @@
-Error logs for s3 storage 4 in project 3 and job null:
+services:
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    container_name: label-studio
+    volumes:
+      - ./data:/label-studio/data
+      - ./s3.crt:/tmp/ca-bundle.crt:ro
+      # - ./log:/tmp/log
+    environment:
+      - AWS_CA_BUNDLE=/tmp/ca-bundle.crt 
+      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_INVITE=true
+      - RQ_ASYNC=1
+      - LABEL_STUDIO_DB=postgresql
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=label-studio
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=labelStudio112
+    ports:
+      - 18081:8080
+    depends_on:
+      - db
+    restart: unless-stopped
 
-It appears the job was failed because the last ping time is too old, and no traceback information is available.
-This typically occurs if job was manually removed or workers reloaded unexpectedly.
+db: 
+  image: postgres:14-alpine
+  container_name: label-studio-db
+  environment:
+    - POSTGRES_DB=label-studio
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=labelStudio112
+  volumes:
+    - ./pg_data:/var/lib/postgresql/data
+  restart: unless-stopped
 
-meta = {"attempts":5,"time_queued":"2025-10-21 09:04:41.901580+00:00","time_in_progress":"2025-10-21 09:04:41.925135+00:00","time_last_ping":"2025-10-21 09:05:54.168908+00:00","duration":72.243773,"tasks_existed":212}
+volumes:
+  pg_data:

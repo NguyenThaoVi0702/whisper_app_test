@@ -1,0 +1,96 @@
+To migrate your Label Studio data from the default SQLite database (stored in `./data/db.sqlite3`) to the new PostgreSQL setup in your updated Docker Compose file, follow these steps carefully. This process uses Django's built-in `dumpdata` and `loaddata` management commands, as Label Studio is built on Django. Your media files (e.g., uploaded images/videos in `./data/media`) will be preserved automatically via the existing `./data:/label-studio/data` volume mount.
+
+### Prerequisites
+- Ensure your old `docker-compose.yml` (SQLite-only) and new `docker-compose.yml` (with PostgreSQL) are in the same directory for simplicity.
+- Back up your entire `./data` directory before starting (e.g., `cp -r ./data ./data-backup`).
+- The new Compose file looks correct, but confirm the PostgreSQL credentials match (`POSTGRES_DB=label-studio`, `POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=labelStudio112`).
+- All commands assume you're running them from the directory containing your `docker-compose.yml`.
+
+### Step 1: Dump Data from SQLite
+1. Stop any running containers if needed:  
+   ```
+   docker-compose down
+   ```
+
+2. Use your **old** `docker-compose.yml` (without PostgreSQL). Start only the Label Studio service:  
+   ```
+   docker-compose up -d label-studio
+   ```
+
+3. Wait for it to fully start (check logs: `docker-compose logs label-studio`). Then, exec into the container and export the database to a JSON fixture file in the mounted `./data` directory:  
+   ```
+   docker exec -it label-studio python manage.py dumpdata --all --indent=2 --exclude=contenttypes --exclude=auth.Permission --exclude=admin.LogEntry --exclude=sessions > /label-studio/data/migration_dump.json
+   ```
+   - This exports all model data (projects, tasks, annotations, users, etc.) while excluding problematic apps that can cause integrity errors during import.
+   - If the dump fails (e.g., due to large data), try excluding more apps like `--exclude=core.UserAction` or run it in chunks (e.g., `dumpdata core.Project > project.json` for specific apps—see Label Studio's `core` app for main data).
+   - Verify the file was created: `ls -la ./data/migration_dump.json` (it should be on your host).
+
+4. Stop the old container:  
+   ```
+   docker-compose down
+   ```
+
+### Step 2: Set Up the New PostgreSQL Database
+1. Switch to your **new** `docker-compose.yml` (with `db` service and PostgreSQL env vars).
+
+2. Create the PostgreSQL volume if it doesn't exist (Compose will handle it, but you can pre-create: `docker volume create pg_data`).
+
+3. Start only the PostgreSQL service and wait for it to initialize:  
+   ```
+   docker-compose up -d db
+   ```
+   - Check readiness: `docker-compose logs db`. Look for "database system is ready to accept connections."
+
+### Step 3: Initialize the New Database Schema
+1. Run Django migrations to create the empty tables in PostgreSQL. This uses a temporary Label Studio container (it will auto-start the `db` if needed):  
+   ```
+   docker-compose run --rm label-studio python manage.py migrate
+   ```
+   - This applies all schema changes without data.
+
+2. (Optional but recommended) Clear any residual content types to avoid import errors:  
+   ```
+   docker-compose run --rm label-studio python manage.py shell -c "from django.contrib.contenttypes.models import ContentType; ContentType.objects.all().delete()"
+   ```
+
+### Step 4: Load Data into PostgreSQL
+1. Import the JSON fixture into the new database:  
+   ```
+   docker-compose run --rm label-studio python manage.py loaddata /label-studio/data/migration_dump.json
+   ```
+   - The file is accessible via the volume mount.
+   - If you get errors (e.g., integrity or unique constraint issues), temporarily disable signals by adding `--disable-signals` (but test in a backup first). For large datasets (>100MB dump), split the JSON into smaller files and load incrementally.
+   - Common post-load fix: Re-run `docker-compose run --rm label-studio python manage.py migrate` to sync any pending changes.
+
+2. If your superuser/admin account wasn't dumped (or needs recreation):  
+   ```
+   docker-compose run --rm label-studio python manage.py createsuperuser
+   ```
+   - Follow the prompts to set up the admin user.
+
+### Step 5: Start the Full Stack and Verify
+1. Bring up the entire new stack:  
+   ```
+   docker-compose up -d
+   ```
+
+2. Check logs:  
+   ```
+   docker-compose logs label-studio
+   ```
+   - Look for successful startup without DB errors.
+
+3. Access Label Studio at `http://localhost:18081`. Log in and verify:
+   - Your projects, tasks, annotations, and users are present.
+   - Media files load correctly (e.g., uploaded images).
+   - Test creating a new annotation to ensure writes to PostgreSQL work.
+
+### Potential Issues and Tips
+- **Large Datasets**: If the dump/load fails due to memory, use `--natural-foreign --natural-primary` in `dumpdata` for better compatibility, or export/import per app (e.g., `dumpdata core.Project core.Task`).
+- **File Paths**: Media URLs in the DB should resolve correctly since the volume mount is unchanged.
+- **RQ_ASYNC=1**: Your async task queue is enabled; monitor for any backlog in logs.
+- **Rollback**: If issues arise, restore `./data` from backup, remove `./pg_data` volume (`docker volume rm pg_data`), and revert to the old Compose.
+- **Security**: Change the PostgreSQL password in production. The `LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_INVITE=true` is already set for security.
+- **Docs Reference**: Based on Django's standard migration process (adapted for Docker). For Label Studio specifics, see [Database Setup](https://labelstud.io/guide/storedata).
+
+If you encounter errors (e.g., paste logs), provide them for troubleshooting. This should transfer all your labeling data seamlessly!

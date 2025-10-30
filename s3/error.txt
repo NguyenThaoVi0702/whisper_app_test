@@ -1,2 +1,5 @@
-E:\label-studio>docker compose up --build -d
-validating E:\label-studio\docker-compose.yml: (root) Additional property db is not allowed
+E:\label-studio>docker-compose run --rm label-studio python manage.py migrate
+[+] Creating 1/1
+ ✔ Container label-studio-db  Running                                                            0.0s
+python: can't open file '/label-studio/manage.py': [Errno 2] No such file or directory
+exit status 2

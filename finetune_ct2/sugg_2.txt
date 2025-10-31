@@ -1,20 +1,12 @@
-Excellent idea. Using a .env file is the standard best practice for managing secrets and configuration. It keeps your sensitive information out of your scripts and makes your setup much more secure and portable.
+Of course. Using Docker Compose is an excellent way to define and run your application in a declarative, reproducible manner. It's a significant improvement over a long docker run command in a shell script.
 
-Let's walk through the exact steps to implement this.
+Here is a complete guide to replacing your run_temp.sh with a docker-compose.yml file.
 
-Why Use a .env File?
+Step 1: Update Your .env File for Docker Compose
 
-Security: Your secret keys are no longer saved in your shell script or your version control history (like Git). You can safely share the script without exposing your credentials.
+We'll centralize all configuration variables—including paths and GPU info—into your .env file. This makes your docker-compose.yml completely static and reusable.
 
-Organization: All your environment-specific configuration is in one, easy-to-find place.
-
-Portability: Another developer can run your code by simply creating their own .env file with their own credentials. No code changes are needed.
-
-Step 1: Create the .env File
-
-In the same directory as your run_temp.sh script, create a new file named .env.
-
-Copy the following content into it, and replace the placeholder values with your actual S3 credentials.
+Replace the contents of your .env file with the following. Remember to fill in your specific values.
 
 .env
 code
@@ -22,121 +14,147 @@ Ini
 download
 content_copy
 expand_less
-# S3 Configuration for Whisper Fine-Tuning
+# S3 Configuration
 S3_ENDPOINT_URL=YOUR_S3_URL_ENDPOINT
 AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
 AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
 AWS_REGION=YOUR_BUCKET_REGION
 
-Note: We use AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY because the boto3 library in the Python script automatically looks for these specific variable names.
+# Docker & Container Configuration
+# The name and tag of your Docker image
+IMAGE_NAME=finetune_whisper_lora:v3
+# The name for the running container
+CONTAINER_NAME=lora-finetuning-job-compose
+# The specific MIG device UUID to use
+MIG_DEVICE_UUID=MIG-GPU-a45fc4b1-c85e-5a3b-8b3d-79191377ec06/4/0
 
-Step 2: (CRITICAL) Add .env to Your .gitignore
+# --- HOST MACHINE PATHS ---
+# These paths are on the machine where you run 'docker compose'
 
-This is the most important step for security. You must ensure you never commit your .env file to a Git repository.
+# Absolute path to your JSON annotations file
+ANNOTATIONS_FILE_PATH=/path/to/your/your_annotations.json
+# Absolute path to your CA certificate
+S3_CA_BUNDLE_PATH=/path/to/your/ca-bundle.crt
 
-If you don't have a .gitignore file, create one. Add the following line to it:
+Important: It's best to use absolute paths (e.g., /home/user/project/your_annotations.json) for the file paths in your .env file to avoid any ambiguity when Docker Compose runs.
 
-.gitignore
+Step 2: Create the docker-compose.yml File
+
+In the same directory as your .env file, create a new file named docker-compose.yml. This file will define your fine-tuning service, telling Docker exactly how to build and run it.
+
+docker-compose.yml
 code
-Code
+Yaml
 download
 content_copy
 expand_less
-# Ignore environment files
-.env
+version: '3.8'
 
-# Ignore python cache
-__pycache__/
+services:
+  finetune-whisper:
+    # Use the image name defined in the .env file
+    image: ${IMAGE_NAME}
+    
+    # Set the container name for easy identification
+    container_name: ${CONTAINER_NAME}
+    
+    # Run the container as the current host user to avoid permission issues with mounted files
+    # This requires you to run 'export UID=$(id -u) GID=$(id -g)' in your shell before starting
+    user: "${UID}:${GID}"
+    
+    # The command to execute when the container starts
+    command: python3 finetune_lora.py
+    
+    # The working directory inside the container
+    working_dir: /app
+    
+    # Load all variables from the .env file into the container's environment
+    env_file: .env
+    
+    # Set additional environment variables needed by the application
+    environment:
+      - HF_HOME=/app/.cache/huggingface
+      - TORCH_HOME=/app/.cache/torch
+      # Tell boto3 (and other tools) where to find the CA certificate inside the container
+      - AWS_CA_BUNDLE=/app/ca-bundle.crt
+      
+    # Define all the volumes to mount from the host into the container
+    volumes:
+      # Mount the current project directory to /app
+      - .:/app
+      # Mount a local cache directory to persist downloads
+      - ./.cache:/app/.cache
+      # Mount the host's passwd and group files to resolve user identity (read-only)
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      # Mount the annotations file (defined in .env) into the container (read-only)
+      - ${ANNOTATIONS_FILE_PATH}:/app/annotations.json:ro
+      # Mount the CA certificate (defined in .env) into the container (read-only)
+      - ${S3_CA_BUNDLE_PATH}:/app/ca-bundle.crt:ro
+      
+    # GPU Configuration
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Use the device UUID from the .env file
+              device_ids: ['${MIG_DEVICE_UUID}']
+              capabilities: [gpu]
+Step 3: How to Use the New Setup
 
-# Ignore cache directories
-.cache/
+Your workflow is now much simpler. You no longer need the run_temp.sh script.
 
-This tells Git to ignore the .env file, preventing you from ever accidentally sharing your secrets.
+1. One-Time User Setup (In your terminal)
 
-Step 3: Modify the run_temp.sh Script
+Before you run Docker Compose for the first time, you need to export your User ID and Group ID so the container can use them. This ensures that any files created by the container have the correct ownership.
 
-Now, we will update your run_temp.sh script. We will remove the hardcoded variables and tell Docker to read them directly from the .env file using the --env-file flag.
-
-This is the cleanest and most secure way to pass these variables to the container.
-
-Updated run_temp.sh
 code
 Bash
 download
 content_copy
 expand_less
-#!/bin/bash
+export UID=$(id -u)
+export GID=$(id -g)
 
-set -e
+You only need to do this once per terminal session. You can also add this line to your shell's startup file (like ~/.bashrc or ~/.zshrc) to make it permanent.
 
-EXISTING_IMAGE_NAME="finetune_whisper_lora:v3"
-# Choose an available MIG device UUID from your nvidia-smi output
-MIG_DEVICE_UUID="MIG-GPU-a45fc4b1-c85e-5a3b-8b3d-79191377ec06/4/0" # Example, verify this
-FINETUNE_CONTAINER_NAME="lora-finetuning-job-s3"
+2. Start the Fine-Tuning Job
 
-# --- Local Paths ---
-# The path to your CA cert on the HOST machine
-S3_CA_BUNDLE_PATH="/path/to/your/ca-bundle.crt" 
-# The local path to your JSON annotations file
-ANNOTATIONS_FILE_PATH="$(pwd)/your_annotations.json"
-# The name of the file inside the container
-ANNOTATIONS_FILE_IN_CONTAINER="/app/annotations.json"
+To start the container in the background (detached mode), run:
 
-### ENHANCED ###
-# S3 credentials are now read from the .env file by the docker command.
-# We no longer define them here.
+code
+Bash
+download
+content_copy
+expand_less
+docker compose up -d
 
-mkdir -p ./.cache
+Docker Compose will automatically read your .env file, configure the container, and start the python3 finetune_lora.py command.
 
-# Stop and remove the container if it already exists
-docker stop "$FINETUNE_CONTAINER_NAME" >/dev/null 2>&1 || true
-docker rm "$FINETUNE_CONTAINER_NAME" >/dev/null 2>&1 || true
+3. Monitor the Logs
 
-echo "Starting fine-tuning container..."
+To see the output of your fine-tuning script in real-time, run:
 
-docker run \
-  -d \
-  --name "$FINETUNE_CONTAINER_NAME" \
-  --user $(id -u):$(id -g) \
-  -v /etc/passwd:/etc/passwd:ro \
-  -v /etc/group:/etc/group:ro \
-  --gpus "device=$MIG_DEVICE_UUID" \
-  --workdir /app \
-  \
-  ### ENHANCED ###
-  # Use the --env-file flag to securely load all variables from the .env file.
-  --env-file ./.env \
-  \
-  # --- Volume Mounts ---
-  -v "$(pwd)":/app \
-  -v "$(pwd)/.cache:/app/.cache" \
-  -v "$ANNOTATIONS_FILE_PATH":"$ANNOTATIONS_FILE_IN_CONTAINER":ro \
-  -v "$S3_CA_BUNDLE_PATH":/app/ca-bundle.crt:ro \
-  \
-  # --- Other Environment Variables ---
-  -e HF_HOME=/app/.cache/huggingface \
-  -e TORCH_HOME=/app/.cache/torch \
-  # Tell Python's boto3 library where to find the CA certificate
-  -e AWS_CA_BUNDLE=/app/ca-bundle.crt \
-  \
-  "$EXISTING_IMAGE_NAME" \
-  python3 finetune_lora.py
+code
+Bash
+download
+content_copy
+expand_less
+docker compose logs -f
 
-echo "Container '$FINETUNE_CONTAINER_NAME' started. Monitor logs with: docker logs -f $FINETUNE_CONTAINER_NAME"
-How It Works (No Changes Needed in Python)
+Press Ctrl+C to stop viewing the logs without stopping the container.
 
-You do not need to change your finetune_lora.py script. It's already written correctly to work with this new method.
+4. Stop and Clean Up
 
-Here's a recap of the data flow:
+Once your training is complete, or if you want to stop it, run:
 
-You execute ./run_temp.sh.
+code
+Bash
+download
+content_copy
+expand_less
+docker compose down```
+This command gracefully stops and removes the container and any networks created. Your data in the `./.cache` and `./new_whisper_vietbud500_adapter_from_s3` directories will remain since they are on your host machine.
 
-The docker run command sees the --env-file ./.env flag.
-
-Docker reads each line from your .env file (e.g., AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY).
-
-It creates an environment variable with that exact key and value inside the running container.
-
-When your Python script runs, the get_s3_client function calls os.environ.get("AWS_ACCESS_KEY_ID"). This reads the environment variable that Docker just set up.
-
-Your setup is now much cleaner and more secure. You just need to manage your .env file locally and your run_temp.sh script can be safely committed to version control.
+This Docker Compose setup provides a clean, declarative, and industry-standard way to manage your application, making it much easier to run and share your project.

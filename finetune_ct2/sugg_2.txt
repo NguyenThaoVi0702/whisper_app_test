@@ -1,28 +1,24 @@
-# --- S3 Client Setup ---
-def get_s3_client():
-    """Initializes and returns a boto3 S3 client using credentials from environment variables."""
-    try:
-        s3_client = boto3.client(
-            "s3",
-            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.environ.get("AWS_REGION"),
-        )
-        
-        ### MODIFIED SECTION ###
-        # Get the bucket name from the environment
-        bucket_name = os.environ.get("S3_BUCKET_NAME")
-        if not bucket_name:
-            raise ValueError("S3_BUCKET_NAME environment variable not set.")
 
-        # Verify connection using a more specific and common permission: head_bucket.
-        # This checks if the bucket exists and if you have permission to access it.
-        s3_client.head_bucket(Bucket=bucket_name)
-        logging.info(f"S3 client initialized and connection to bucket '{bucket_name}' verified successfully.")
-        return s3_client
-        ### END MODIFIED SECTION ###
-
-    except Exception as e:
-        logging.error(f"Failed to create or verify S3 client: {e}")
-        raise
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ docker compose logs -f
+WARN[0000] The "HOST_UID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "HOST_GID" variable is not set. Defaulting to a blank string.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | ==========
+lora-finetuning-job-s3  | == CUDA ==
+lora-finetuning-job-s3  | ==========
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | CUDA Version 12.0.1
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
+lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | 2025-10-31 08:50:42,452 - INFO - S3 client initialized and connection to bucket 'lhl-s3-a544-aipage-bbh' verified successfully.
+lora-finetuning-job-s3  | Traceback (most recent call last):
+lora-finetuning-job-s3  |   File "/app/finetune_hybrid.py", line 116, in <module>
+lora-finetuning-job-s3  |     Gain(min_gain_in_db=-6, max_gain_in_db=6, p=0.3),
+lora-finetuning-job-s3  | TypeError: Gain.__init__() got an unexpected keyword argument 'min_gain_in_db'

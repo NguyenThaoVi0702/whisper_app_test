@@ -1,138 +1,26 @@
-# train_model.py
 
-import os
-import logging
-from dataclasses import dataclass
-
-import torch
-import numpy as np
-from datasets import load_from_disk
-from transformers import (
-    WhisperForConditionalGeneration,
-    WhisperProcessor,
-    Seq2SeqTrainingArguments,
-    Seq2SeqTrainer,
-    utils,
-)
-from peft import PeftModel, prepare_model_for_kbit_training
-import jiwer
-
-# --- Basic Setup ---
-utils.logging.set_verbosity_error()
-### FIX #1: Corrected logging format typo 'asctimes' -> 'asctime' ###
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# --- Configuration Paths ---
-BASE_MODEL_PATH = "./model"
-ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"
-NEW_ADAPTER_SAVE_PATH = "/app/outputs/vietbud500_adapter_final"
-PROCESSED_TRAIN_PATH = "/app/processed_data/train"
-PROCESSED_VAL_PATH = "/app/processed_data/validation"
-
-# --- GLOBAL PROCESSOR DEFINITION ---
-logging.info("Loading Whisper processor...")
-processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
-
-
-# --- Data Collator and Metrics ---
-@dataclass
-class DataCollatorSpeechSeq2SeqWithPadding:
-    processor: WhisperProcessor
-    def __call__(self, features):
-        input_features = [{"input_features": feature["input_features"]} for feature in features]
-        label_features = [{"input_ids": feature["labels"]} for feature in features]
-        batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
-        labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
-        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
-        if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
-            labels = labels[:, 1:]
-        batch["labels"] = labels
-        return batch
-
-def compute_metrics(pred):
-    pred_ids = pred.predictions[0] if isinstance(pred.predictions, tuple) else pred.predictions
-    label_ids = pred.label_ids
-    label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
-    ### FIX #2: Corrected typo from '_True' to 'True' ###
-    pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
-    label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
-    wer = jiwer.wer(label_str, pred_str)
-    return {"wer": wer}
-
-def main():
-    # 1. Load Pre-processed Datasets from Disk
-    logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
-    train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
-    logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
-    val_dataset = load_from_disk(PROCESSED_VAL_PATH)
-    logging.info("Datasets loaded successfully.")
-
-    # 2. Model Loading and Hybrid Fine-Tuning Setup
-    logging.info("Loading base model...")
-    model = WhisperForConditionalGeneration.from_pretrained(
-        BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.bfloat16
-    )
-    
-    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
-    
-    logging.info("Applying LoRA adapter...")
-    model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
-    
-    ### FIX #3 (THE CRITICAL ONE): Revert to the stable forward_hook method ###
-    # This is a less invasive way to enable gradients and is more compatible
-    # with PEFT's internal model modifications than manually setting requires_grad.
-    # This is the strategy from your original script.
-    logging.info("Applying forward_hook to convolutional layers for hybrid fine-tuning...")
-    model.model.model.encoder.conv1.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
-    model.model.model.encoder.conv2.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
-            
-    model.print_trainable_parameters()
-
-    # 3. Training Arguments
-    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
-    has_bf16 = torch.cuda.is_bf16_supported()
-    training_args = Seq2SeqTrainingArguments(
-        output_dir=NEW_ADAPTER_SAVE_PATH,
-        per_device_train_batch_size=16,
-        gradient_accumulation_steps=4,
-        learning_rate=5e-6,
-        warmup_steps=50,
-        num_train_epochs=5,
-        bf16=has_bf16,
-        fp16=not has_bf16,
-        optim="adamw_torch",
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        save_total_limit=2,
-        logging_steps=10,
-        report_to=["tensorboard"],
-        load_best_model_at_end=True,
-        metric_for_best_model="wer",
-        greater_is_better=False,
-        dataloader_num_workers=4,
-        generation_max_length=448,
-    )
-
-    # 4. Initialize and Run Trainer
-    trainer = Seq2SeqTrainer(
-        args=training_args,
-        model=model,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
-        processing_class=processor,
-    )
-    
-    logging.info("Starting model training...")
-    trainer.train()
-
-    logging.info("Final evaluation on the best model:")
-    final_metrics = trainer.evaluate()
-    logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
-
-    logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
-    trainer.save_model()
-
-if __name__ == "__main__":
-    main()
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1069, in forward
+lora-finetuning-job-s3  |     layer_outputs = encoder_layer(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 621, in forward
+lora-finetuning-job-s3  |     hidden_states = self.self_attn_layer_norm(hidden_states)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/normalization.py", line 217, in forward
+lora-finetuning-job-s3  |     return F.layer_norm(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/functional.py", line 2910, in layer_norm
+lora-finetuning-job-s3  |     return torch.layer_norm(
+lora-finetuning-job-s3  | RuntimeError: NVML_SUCCESS == r INTERNAL ASSERT FAILED at "/pytorch/c10/cuda/CUDACachingAllocator.cpp":1016, please report a bug to PyTorch.
+lora-finetuning-job-s3  | Exception in thread Thread-3 (_pin_memory_loop):
+lora-finetuning-job-s3  | Traceback (most recent call last):
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/threading.py", line 1016, in _bootstrap_inner
+lora-finetuning-job-s3 exited with code 1

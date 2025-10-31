@@ -1,364 +1,138 @@
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ docker compose logs -f
-WARN[0000] The "HOST_UID" variable is not set. Defaulting to a blank string.
-WARN[0000] The "HOST_GID" variable is not set. Defaulting to a blank string.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  | == CUDA ==
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | CUDA Version 12.0.1
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
-lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
-lora-finetuning-job-s3  | 2025-10-31 10:28:01,770 - INFO - Pre-processed data already found on disk. Skipping data preparation.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 33, in <module>
-lora-finetuning-job-s3  |     logging.info("Loading Whisper processor...")
-lora-finetuning-job-s3  | Message: 'Loading Whisper processor...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 67, in main
-lora-finetuning-job-s3  |     logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
-lora-finetuning-job-s3  | Message: 'Loading pre-processed training data from /app/processed_data/train...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 69, in main
-lora-finetuning-job-s3  |     logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
-lora-finetuning-job-s3  | Message: 'Loading pre-processed validation data from /app/processed_data/validation...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 71, in main
-lora-finetuning-job-s3  |     logging.info("Datasets loaded successfully.")
-lora-finetuning-job-s3  | Message: 'Datasets loaded successfully.'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 74, in main
-lora-finetuning-job-s3  |     logging.info("Loading base model...")
-lora-finetuning-job-s3  | Message: 'Loading base model...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 75, in main
-lora-finetuning-job-s3  |     model = WhisperForConditionalGeneration.from_pretrained(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_utils.py", line 279, in _wrapper
-lora-finetuning-job-s3  |     return func(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_utils.py", line 4380, in from_pretrained
-lora-finetuning-job-s3  |     device_map = _get_device_map(model, device_map, max_memory, hf_quantizer, torch_dtype, keep_in_fp32_regex)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_utils.py", line 1288, in _get_device_map
-lora-finetuning-job-s3  |     max_memory = get_balanced_memory(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/utils/modeling.py", line 991, in get_balanced_memory
-lora-finetuning-job-s3  |     logger.info(
-lora-finetuning-job-s3  | Message: 'We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 84, in main
-lora-finetuning-job-s3  |     logging.info("Applying LoRA adapter...")
-lora-finetuning-job-s3  | Message: 'Applying LoRA adapter...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 88, in main
-lora-finetuning-job-s3  |     logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
-lora-finetuning-job-s3  | Message: 'Unfreezing convolutional layers for hybrid fine-tuning...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | --- Logging error ---
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 440, in format
-lora-finetuning-job-s3  |     return self._format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 436, in _format
-lora-finetuning-job-s3  |     return self._fmt % values
-lora-finetuning-job-s3  | KeyError: 'asctimes'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | During handling of the above exception, another exception occurred:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 1100, in emit
-lora-finetuning-job-s3  |     msg = self.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 943, in format
-lora-finetuning-job-s3  |     return fmt.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 681, in format
-lora-finetuning-job-s3  |     s = self.formatMessage(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 650, in formatMessage
-lora-finetuning-job-s3  |     return self._style.format(record)
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/logging/__init__.py", line 442, in format
-lora-finetuning-job-s3  |     raise ValueError('Formatting field not found in record: %s' % e)
-lora-finetuning-job-s3  | ValueError: Formatting field not found in record: 'asctimes'
-lora-finetuning-job-s3  | Call stack:
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 134, in main
-lora-finetuning-job-s3  |     logging.info("Starting model training...")
-lora-finetuning-job-s3  | Message: 'Starting model training...'
-lora-finetuning-job-s3  | Arguments: ()
-lora-finetuning-job-s3  | trainable params: 11,962,880 || all params: 815,431,680 || trainable%: 1.4671
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 145, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 135, in main
-lora-finetuning-job-s3  |     trainer.train()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2245, in train
-lora-finetuning-job-s3  |     return inner_training_loop(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2560, in _inner_training_loop
-lora-finetuning-job-s3  |     tr_loss_step = self.training_step(model, inputs, num_items_in_batch)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3736, in training_step
-lora-finetuning-job-s3  |     loss = self.compute_loss(model, inputs, num_items_in_batch=num_items_in_batch)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3801, in compute_loss
-lora-finetuning-job-s3  |     outputs = model(**inputs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/utils/operations.py", line 818, in forward
-lora-finetuning-job-s3  |     return model_forward(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/utils/operations.py", line 806, in __call__
-lora-finetuning-job-s3  |     return convert_to_fp32(self.model_forward(*args, **kwargs))
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
-lora-finetuning-job-s3  |     return func(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/peft/peft_model.py", line 818, in forward
-lora-finetuning-job-s3  |     return self.get_base_model()(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1776, in forward
-lora-finetuning-job-s3  |     outputs = self.model(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1627, in forward
-lora-finetuning-job-s3  |     encoder_outputs = self.encoder(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1069, in forward
-lora-finetuning-job-s3  |     layer_outputs = encoder_layer(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 622, in forward
-lora-finetuning-job-s3  |     hidden_states, attn_weights, _ = self.self_attn(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 511, in forward
-lora-finetuning-job-s3  |     query_states = self._shape(self.q_proj(hidden_states), tgt_len, bsz)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/lora/layer.py", line 727, in forward
-lora-finetuning-job-s3  |     result = result + lora_B(lora_A(dropout(x))) * scaling
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/dropout.py", line 70, in forward
-lora-finetuning-job-s3  |     return F.dropout(input, self.p, self.training, self.inplace)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/functional.py", line 1425, in dropout
-lora-finetuning-job-s3  |     _VF.dropout_(input, p, training) if inplace else _VF.dropout(input, p, training)
-lora-finetuning-job-s3  | RuntimeError: NVML_SUCCESS == r INTERNAL ASSERT FAILED at "/pytorch/c10/cuda/CUDACachingAllocator.cpp":1016, please report a bug to PyTorch.
+# train_model.py
+
+import os
+import logging
+from dataclasses import dataclass
+
+import torch
+import numpy as np
+from datasets import load_from_disk
+from transformers import (
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
+    Seq2SeqTrainingArguments,
+    Seq2SeqTrainer,
+    utils,
+)
+from peft import PeftModel, prepare_model_for_kbit_training
+import jiwer
+
+# --- Basic Setup ---
+utils.logging.set_verbosity_error()
+### FIX #1: Corrected logging format typo 'asctimes' -> 'asctime' ###
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- Configuration Paths ---
+BASE_MODEL_PATH = "./model"
+ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"
+NEW_ADAPTER_SAVE_PATH = "/app/outputs/vietbud500_adapter_final"
+PROCESSED_TRAIN_PATH = "/app/processed_data/train"
+PROCESSED_VAL_PATH = "/app/processed_data/validation"
+
+# --- GLOBAL PROCESSOR DEFINITION ---
+logging.info("Loading Whisper processor...")
+processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+
+
+# --- Data Collator and Metrics ---
+@dataclass
+class DataCollatorSpeechSeq2SeqWithPadding:
+    processor: WhisperProcessor
+    def __call__(self, features):
+        input_features = [{"input_features": feature["input_features"]} for feature in features]
+        label_features = [{"input_ids": feature["labels"]} for feature in features]
+        batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
+        labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
+        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
+        if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
+            labels = labels[:, 1:]
+        batch["labels"] = labels
+        return batch
+
+def compute_metrics(pred):
+    pred_ids = pred.predictions[0] if isinstance(pred.predictions, tuple) else pred.predictions
+    label_ids = pred.label_ids
+    label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
+    ### FIX #2: Corrected typo from '_True' to 'True' ###
+    pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
+    label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
+    wer = jiwer.wer(label_str, pred_str)
+    return {"wer": wer}
+
+def main():
+    # 1. Load Pre-processed Datasets from Disk
+    logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
+    train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
+    logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
+    val_dataset = load_from_disk(PROCESSED_VAL_PATH)
+    logging.info("Datasets loaded successfully.")
+
+    # 2. Model Loading and Hybrid Fine-Tuning Setup
+    logging.info("Loading base model...")
+    model = WhisperForConditionalGeneration.from_pretrained(
+        BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.bfloat16
+    )
+    
+    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
+    
+    logging.info("Applying LoRA adapter...")
+    model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
+    
+    ### FIX #3 (THE CRITICAL ONE): Revert to the stable forward_hook method ###
+    # This is a less invasive way to enable gradients and is more compatible
+    # with PEFT's internal model modifications than manually setting requires_grad.
+    # This is the strategy from your original script.
+    logging.info("Applying forward_hook to convolutional layers for hybrid fine-tuning...")
+    model.model.model.encoder.conv1.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
+    model.model.model.encoder.conv2.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
+            
+    model.print_trainable_parameters()
+
+    # 3. Training Arguments
+    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
+    has_bf16 = torch.cuda.is_bf16_supported()
+    training_args = Seq2SeqTrainingArguments(
+        output_dir=NEW_ADAPTER_SAVE_PATH,
+        per_device_train_batch_size=16,
+        gradient_accumulation_steps=4,
+        learning_rate=5e-6,
+        warmup_steps=50,
+        num_train_epochs=5,
+        bf16=has_bf16,
+        fp16=not has_bf16,
+        optim="adamw_torch",
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=2,
+        logging_steps=10,
+        report_to=["tensorboard"],
+        load_best_model_at_end=True,
+        metric_for_best_model="wer",
+        greater_is_better=False,
+        dataloader_num_workers=4,
+        generation_max_length=448,
+    )
+
+    # 4. Initialize and Run Trainer
+    trainer = Seq2SeqTrainer(
+        args=training_args,
+        model=model,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        data_collator=data_collator,
+        compute_metrics=compute_metrics,
+        processing_class=processor,
+    )
+    
+    logging.info("Starting model training...")
+    trainer.train()
+
+    logging.info("Final evaluation on the best model:")
+    final_metrics = trainer.evaluate()
+    logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
+
+    logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
+    trainer.save_model()
+
+if __name__ == "__main__":
+    main()

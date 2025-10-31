@@ -1,0 +1,142 @@
+Excellent idea. Using a .env file is the standard best practice for managing secrets and configuration. It keeps your sensitive information out of your scripts and makes your setup much more secure and portable.
+
+Let's walk through the exact steps to implement this.
+
+Why Use a .env File?
+
+Security: Your secret keys are no longer saved in your shell script or your version control history (like Git). You can safely share the script without exposing your credentials.
+
+Organization: All your environment-specific configuration is in one, easy-to-find place.
+
+Portability: Another developer can run your code by simply creating their own .env file with their own credentials. No code changes are needed.
+
+Step 1: Create the .env File
+
+In the same directory as your run_temp.sh script, create a new file named .env.
+
+Copy the following content into it, and replace the placeholder values with your actual S3 credentials.
+
+.env
+code
+Ini
+download
+content_copy
+expand_less
+# S3 Configuration for Whisper Fine-Tuning
+S3_ENDPOINT_URL=YOUR_S3_URL_ENDPOINT
+AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
+AWS_REGION=YOUR_BUCKET_REGION
+
+Note: We use AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY because the boto3 library in the Python script automatically looks for these specific variable names.
+
+Step 2: (CRITICAL) Add .env to Your .gitignore
+
+This is the most important step for security. You must ensure you never commit your .env file to a Git repository.
+
+If you don't have a .gitignore file, create one. Add the following line to it:
+
+.gitignore
+code
+Code
+download
+content_copy
+expand_less
+# Ignore environment files
+.env
+
+# Ignore python cache
+__pycache__/
+
+# Ignore cache directories
+.cache/
+
+This tells Git to ignore the .env file, preventing you from ever accidentally sharing your secrets.
+
+Step 3: Modify the run_temp.sh Script
+
+Now, we will update your run_temp.sh script. We will remove the hardcoded variables and tell Docker to read them directly from the .env file using the --env-file flag.
+
+This is the cleanest and most secure way to pass these variables to the container.
+
+Updated run_temp.sh
+code
+Bash
+download
+content_copy
+expand_less
+#!/bin/bash
+
+set -e
+
+EXISTING_IMAGE_NAME="finetune_whisper_lora:v3"
+# Choose an available MIG device UUID from your nvidia-smi output
+MIG_DEVICE_UUID="MIG-GPU-a45fc4b1-c85e-5a3b-8b3d-79191377ec06/4/0" # Example, verify this
+FINETUNE_CONTAINER_NAME="lora-finetuning-job-s3"
+
+# --- Local Paths ---
+# The path to your CA cert on the HOST machine
+S3_CA_BUNDLE_PATH="/path/to/your/ca-bundle.crt" 
+# The local path to your JSON annotations file
+ANNOTATIONS_FILE_PATH="$(pwd)/your_annotations.json"
+# The name of the file inside the container
+ANNOTATIONS_FILE_IN_CONTAINER="/app/annotations.json"
+
+### ENHANCED ###
+# S3 credentials are now read from the .env file by the docker command.
+# We no longer define them here.
+
+mkdir -p ./.cache
+
+# Stop and remove the container if it already exists
+docker stop "$FINETUNE_CONTAINER_NAME" >/dev/null 2>&1 || true
+docker rm "$FINETUNE_CONTAINER_NAME" >/dev/null 2>&1 || true
+
+echo "Starting fine-tuning container..."
+
+docker run \
+  -d \
+  --name "$FINETUNE_CONTAINER_NAME" \
+  --user $(id -u):$(id -g) \
+  -v /etc/passwd:/etc/passwd:ro \
+  -v /etc/group:/etc/group:ro \
+  --gpus "device=$MIG_DEVICE_UUID" \
+  --workdir /app \
+  \
+  ### ENHANCED ###
+  # Use the --env-file flag to securely load all variables from the .env file.
+  --env-file ./.env \
+  \
+  # --- Volume Mounts ---
+  -v "$(pwd)":/app \
+  -v "$(pwd)/.cache:/app/.cache" \
+  -v "$ANNOTATIONS_FILE_PATH":"$ANNOTATIONS_FILE_IN_CONTAINER":ro \
+  -v "$S3_CA_BUNDLE_PATH":/app/ca-bundle.crt:ro \
+  \
+  # --- Other Environment Variables ---
+  -e HF_HOME=/app/.cache/huggingface \
+  -e TORCH_HOME=/app/.cache/torch \
+  # Tell Python's boto3 library where to find the CA certificate
+  -e AWS_CA_BUNDLE=/app/ca-bundle.crt \
+  \
+  "$EXISTING_IMAGE_NAME" \
+  python3 finetune_lora.py
+
+echo "Container '$FINETUNE_CONTAINER_NAME' started. Monitor logs with: docker logs -f $FINETUNE_CONTAINER_NAME"
+How It Works (No Changes Needed in Python)
+
+You do not need to change your finetune_lora.py script. It's already written correctly to work with this new method.
+
+Here's a recap of the data flow:
+
+You execute ./run_temp.sh.
+
+The docker run command sees the --env-file ./.env flag.
+
+Docker reads each line from your .env file (e.g., AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY).
+
+It creates an environment variable with that exact key and value inside the running container.
+
+When your Python script runs, the get_s3_client function calls os.environ.get("AWS_ACCESS_KEY_ID"). This reads the environment variable that Docker just set up.
+
+Your setup is now much cleaner and more secure. You just need to manage your .env file locally and your run_temp.sh script can be safely committed to version control.

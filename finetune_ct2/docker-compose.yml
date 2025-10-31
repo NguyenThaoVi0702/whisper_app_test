@@ -1,0 +1,40 @@
+services:
+  finetuner:
+    image: finetune_whisper_lora:v4
+    container_name: lora-finetuning-job-s3
+
+    user: "${HOST_UID}:${HOST_GID}"
+
+    env_file:
+      - .env
+
+    environment:
+      - HF_HOME=/app/.cache/huggingface
+      - TORCH_HOME=/app/.cache/torch
+      - AWS_CA_BUNDLE=/app/ca-bundle.crt
+      - TRITON_CACHE_DIR=/app/.cache/triton
+      - NUMBA_CACHE_DIR=/app/.cache/numba
+
+    working_dir: /app
+
+    volumes:
+      - .:/app
+      - ./.cache:/app/.cache
+      - ${ANNOTATIONS_FILE_PATH}:${ANNOTATIONS_FILE_IN_CONTAINER}:ro
+      - ${S3_CA_BUNDLE_PATH}:/app/ca-bundle.crt:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ./outputs:/app/outputs
+      - ${BASE_MODEL_PATH_HOST}:/app/model:ro
+      - ${OLD_ADAPTER_PATH_HOST}:/app/my-whisper-medium-lora:ro
+      - ./processed_data:/app/processed_data
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ['${MIG_DEVICE_UUID}']
+
+    command: /bin/bash run_pipeline.sh

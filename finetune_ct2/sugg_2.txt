@@ -1,12 +1,10 @@
-# train_model.py
-
 import os
-import logging
+import glob
+import logging  # NEW: For warning suppression
 from dataclasses import dataclass
-
 import torch
-import numpy as np
-from datasets import load_from_disk
+import numpy as np  
+from datasets import load_dataset, Audio
 from transformers import (
     WhisperForConditionalGeneration,
     WhisperProcessor,
@@ -14,128 +12,182 @@ from transformers import (
     Seq2SeqTrainer,
     utils,
 )
-from peft import PeftModel, prepare_model_for_kbit_training
-import jiwer
+from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training, LoraConfig
+import jiwer  
 
-# --- Basic Setup ---
-utils.logging.set_verbosity_error()
-### FIX #1: Corrected logging format typo 'asctimes' -> 'asctime' ###
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Configuration Paths ---
-BASE_MODEL_PATH = "./model"
-ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"
-NEW_ADAPTER_SAVE_PATH = "/app/outputs/vietbud500_adapter_final"
-PROCESSED_TRAIN_PATH = "/app/processed_data/train"
-PROCESSED_VAL_PATH = "/app/processed_data/validation"
+utils.logging.set_verbosity_error()  
+os.environ["TOKENIZERS_PARALLELISM"] = "false"  
 
-# --- GLOBAL PROCESSOR DEFINITION ---
-logging.info("Loading Whisper processor...")
+BASE_MODEL_PATH = "./model"  
+ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"  
+DATASET_PATH = "/tmp/viet_bud500"  
+NEW_ADAPTER_SAVE_PATH = "./new_whisper_vietbud500_adapter"
+
 processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
 
 
-# --- Data Collator and Metrics ---
+use_quantization = True
+quantization_config = None
+if use_quantization:
+    from transformers import BitsAndBytesConfig
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        bnb_8bit_compute_dtype=torch.bfloat16,
+    )
+
+model = WhisperForConditionalGeneration.from_pretrained(
+    BASE_MODEL_PATH,
+    device_map="auto",
+    use_cache=False,
+    torch_dtype=torch.bfloat16,
+    quantization_config=quantization_config,
+)
+
+model.config.forced_decoder_ids = None
+model.config.suppress_tokens = []  
+
+model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
+
+model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
+
+if not use_quantization:
+    model.model.model.encoder.conv1.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
+
+model.print_trainable_parameters()
+
+
+parquet_dir = os.path.join(DATASET_PATH, "data")
+train_files = {"train": glob.glob(f"{parquet_dir}/train-*.parquet")}
+val_files = {"train": glob.glob(f"{parquet_dir}/validation-*.parquet")}  
+
+train_dataset = load_dataset('parquet', data_files=train_files).cast_column("audio", Audio(sampling_rate=16000))["train"]
+val_dataset = load_dataset('parquet', data_files=val_files).cast_column("audio", Audio(sampling_rate=16000))["train"]
+
+def filter_data(example):
+    audio_len = len(example["audio"]["array"])
+    return 16000 < audio_len < 480000 and len(example["transcription"]) > 5
+
+print("Original train size:", len(train_dataset))
+train_dataset = train_dataset.filter(filter_data, num_proc=1)
+print("Filtered train size:", len(train_dataset))
+
+print("Original val size:", len(val_dataset))
+val_dataset = val_dataset.filter(filter_data, num_proc=1)
+print("Filtered val size:", len(val_dataset))
+
+def prepare_dataset(batch):
+    audio = batch["audio"]
+    batch["input_features"] = processor.feature_extractor(
+        audio["array"], sampling_rate=16000
+    ).input_features[0]
+    batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
+    batch["input_length"] = int(len(audio["array"]))
+    batch["labels_length"] = int(len(batch["labels"]))
+    return batch
+
+train_dataset = train_dataset.map(prepare_dataset, remove_columns=train_dataset.column_names, num_proc=1)
+val_dataset = val_dataset.map(prepare_dataset, remove_columns=val_dataset.column_names, num_proc=1)
+
+def filter_inputs(length):
+    return 0 < length < 480000 
+
+def filter_labels(length):
+    return length < 448  
+
+train_dataset = train_dataset.filter(filter_inputs, input_columns=["input_length"])
+train_dataset = train_dataset.filter(filter_labels, input_columns=["labels_length"])
+val_dataset = val_dataset.filter(filter_inputs, input_columns=["input_length"])
+val_dataset = val_dataset.filter(filter_labels, input_columns=["labels_length"])
+
+train_dataset = train_dataset.remove_columns(["input_length", "labels_length"])
+val_dataset = val_dataset.remove_columns(["input_length", "labels_length"])
+
+train_dataset = train_dataset.shuffle(seed=42)
+
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
-    processor: WhisperProcessor
+    processor: WhisperProcessor  
+
     def __call__(self, features):
         input_features = [{"input_features": feature["input_features"]} for feature in features]
         label_features = [{"input_ids": feature["labels"]} for feature in features]
+
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
         labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
+
         labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
+
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
+
         batch["labels"] = labels
         return batch
 
+data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
+
 def compute_metrics(pred):
-    pred_ids = pred.predictions[0] if isinstance(pred.predictions, tuple) else pred.predictions
+    pred_ids = pred.predictions
+    if isinstance(pred_ids, tuple):
+        pred_ids = pred_ids[0]
+    pred_ids = np.array(pred_ids) if not isinstance(pred_ids, np.ndarray) else pred_ids
     label_ids = pred.label_ids
     label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
-    ### FIX #2: Corrected typo from '_True' to 'True' ###
+    label_ids = np.array(label_ids) if not isinstance(label_ids, np.ndarray) else label_ids
     pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
     label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
     wer = jiwer.wer(label_str, pred_str)
     return {"wer": wer}
 
-def main():
-    # 1. Load Pre-processed Datasets from Disk
-    logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
-    train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
-    logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
-    val_dataset = load_from_disk(PROCESSED_VAL_PATH)
-    logging.info("Datasets loaded successfully.")
+has_bf16 = torch.cuda.is_bf16_supported()
+training_args = Seq2SeqTrainingArguments(
+    output_dir=NEW_ADAPTER_SAVE_PATH,
+    per_device_train_batch_size=16,  
+    per_device_eval_batch_size=4,  
+    gradient_accumulation_steps=4, 
+    learning_rate=1e-5,  
+    warmup_steps=50,
+    max_steps=5000,  
+    bf16=has_bf16,
+    fp16=not has_bf16,
+    optim="adamw_torch",
+    do_eval=True,
+    eval_strategy="steps",
+    eval_steps=500,
+    save_strategy="steps",
+    save_steps=500,
+    save_total_limit=3,
+    logging_steps=25,
+    report_to=["tensorboard"],
+    load_best_model_at_end=True,
+    metric_for_best_model="wer",
+    greater_is_better=False,
+    remove_unused_columns=False,
+    label_names=["labels"],
+    predict_with_generate=True, 
+    dataloader_num_workers=0,  
+    generation_max_length=448,
+    generation_num_beams=1,
+    disable_tqdm=False,
+)
 
-    # 2. Model Loading and Hybrid Fine-Tuning Setup
-    logging.info("Loading base model...")
-    model = WhisperForConditionalGeneration.from_pretrained(
-        BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.bfloat16
-    )
-    
-    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
-    
-    logging.info("Applying LoRA adapter...")
-    model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
 
-    ### FIX #3: Replaced unstable forward_hook with a stable method to unfreeze layers ###
-    # The forward_hook approach to enable gradients is unstable.
-    # A better practice is to iterate through model parameters and set requires_grad = True
-    # on the desired layers before training begins.
-    logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
-    for name, param in model.named_parameters():
-        if 'conv1' in name or 'conv2' in name:
-            param.requires_grad = True
-            
-    model.print_trainable_parameters()
+trainer = Seq2SeqTrainer(
+    args=training_args,
+    model=model,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+    data_collator=data_collator,
+    processing_class=processor,  
+    compute_metrics=compute_metrics,  
+)
 
-    # 3. Training Arguments
-    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
-    has_bf16 = torch.cuda.is_bf16_supported()
-    training_args = Seq2SeqTrainingArguments(
-        output_dir=NEW_ADAPTER_SAVE_PATH,
-        per_device_train_batch_size=16,
-        gradient_accumulation_steps=4,
-        learning_rate=5e-6,
-        warmup_steps=50,
-        num_train_epochs=5,
-        bf16=has_bf16,
-        fp16=not has_bf16,
-        optim="adamw_torch",
-        eval_strategy="epoch",  # Kept as requested
-        save_strategy="epoch",
-        save_total_limit=2,
-        logging_steps=10,
-        report_to=["tensorboard"],
-        load_best_model_at_end=True,
-        metric_for_best_model="wer",
-        greater_is_better=False,
-        dataloader_num_workers=4,
-        ### FIX #4: Added dataloader_pin_memory=False to prevent potential CUDA context errors ###
-        dataloader_pin_memory=False,
-        generation_max_length=448,
-    )
+print("Starting continued training with evaluation...")
+trainer.train()
 
-    # 4. Initialize and Run Trainer
-    trainer = Seq2SeqTrainer(
-        args=training_args,
-        model=model,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
-        tokenizer=processor.feature_extractor, # Kept `processing_class` from original intent (now `tokenizer`)
-    )
-    
-    logging.info("Starting model training...")
-    trainer.train()
+print("Final evaluation:")
+final_metrics = trainer.evaluate()
+print(f"Final WER: {final_metrics['eval_wer']:.4f}")
 
-    logging.info("Final evaluation on the best model:")
-    final_metrics = trainer.evaluate()
-    logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
-
-    logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
-    trainer.save_model()
-
-if __name__ == "__main__":
-    main()
+print(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
+trainer.save_model()

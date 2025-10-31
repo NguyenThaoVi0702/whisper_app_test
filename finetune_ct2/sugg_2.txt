@@ -1,79 +1,44 @@
+version: '3.8'
 
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose up
-Creating network "finetunning_20251031_default" with the default driver
-Creating lora-finetuning-job-s3 ... done
-Attaching to lora-finetuning-job-s3
-lora-finetuning-job-s3 |
-lora-finetuning-job-s3 | ==========
-lora-finetuning-job-s3 | == CUDA ==
-lora-finetuning-job-s3 | ==========
-lora-finetuning-job-s3 |
-lora-finetuning-job-s3 | CUDA Version 12.0.1
-lora-finetuning-job-s3 |
-lora-finetuning-job-s3 | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-lora-finetuning-job-s3 |
-lora-finetuning-job-s3 | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-lora-finetuning-job-s3 | By pulling and using the container, you accept the terms and conditions of this license:
-lora-finetuning-job-s3 | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-lora-finetuning-job-s3 |
-lora-finetuning-job-s3 | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-lora-finetuning-job-s3 |
-lora-finetuning-job-s3 | 2025-10-31 08:54:21,079 - INFO - S3 client initialized and connection to bucket 'lhl-s3-a544-aipage-bbh' verified successfully.
-lora-finetuning-job-s3 | 2025-10-31 08:54:21,751 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
-lora-finetuning-job-s3 | Traceback (most recent call last):
-lora-finetuning-job-s3 |   File "/app/finetune_hybrid.py", line 164, in <module>
-lora-finetuning-job-s3 |     model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/peft_model.py", line 525, in from_pretrained
-lora-finetuning-job-s3 |     model = cls(
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/peft_model.py", line 132, in __init__
-lora-finetuning-job-s3 |     self.base_model = cls(model, {adapter_name: peft_config}, adapter_name)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/lora/model.py", line 142, in __init__
-lora-finetuning-job-s3 |     super().__init__(model, config, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/tuners_utils.py", line 180, in __init__
-lora-finetuning-job-s3 |     self.inject_adapter(self.model, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/tuners_utils.py", line 508, in inject_adapter
-lora-finetuning-job-s3 |     self._create_and_replace(peft_config, adapter_name, target, target_name, parent, current_key=key)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/lora/model.py", line 237, in _create_and_replace
-lora-finetuning-job-s3 |     new_module = self._create_new_module(lora_config, adapter_name, target, device_map=device_map, **kwargs)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/lora/model.py", line 318, in _create_new_module
-lora-finetuning-job-s3 |     from .bnb import dispatch_bnb_8bit
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/peft/tuners/lora/bnb.py", line 19, in <module>
-lora-finetuning-job-s3 |     import bitsandbytes as bnb
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/bitsandbytes/__init__.py", line 15, in <module>
-lora-finetuning-job-s3 |     from .nn import modules
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/bitsandbytes/nn/__init__.py", line 21, in <module>
-lora-finetuning-job-s3 |     from .triton_based_modules import (
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/bitsandbytes/nn/triton_based_modules.py", line 6, in <module>
-lora-finetuning-job-s3 |     from bitsandbytes.triton.dequantize_rowwise import dequantize_rowwise
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/bitsandbytes/triton/dequantize_rowwise.py", line 36, in <module>
-lora-finetuning-job-s3 |     def _dequantize_rowwise(
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/autotuner.py", line 378, in decorator
-lora-finetuning-job-s3 |     return Autotuner(fn, fn.arg_names, configs, key, reset_to_zero, restore_value, pre_hook=pre_hook,
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/autotuner.py", line 130, in __init__
-lora-finetuning-job-s3 |     self.do_bench = driver.active.get_benchmarker()
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/driver.py", line 23, in __getattr__
-lora-finetuning-job-s3 |     self._initialize_obj()
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/driver.py", line 20, in _initialize_obj
-lora-finetuning-job-s3 |     self._obj = self._init_fn()
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/driver.py", line 9, in _create_driver
-lora-finetuning-job-s3 |     return actives[0]()
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/backends/nvidia/driver.py", line 535, in __init__
-lora-finetuning-job-s3 |     self.utils = CudaUtils()  # TODO: make static
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/backends/nvidia/driver.py", line 89, in __init__
-lora-finetuning-job-s3 |     mod = compile_module_from_src(Path(os.path.join(dirname, "driver.c")).read_text(), "cuda_utils")
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/backends/nvidia/driver.py", line 58, in compile_module_from_src
-lora-finetuning-job-s3 |     cache = get_cache_manager(key)
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/cache.py", line 277, in get_cache_manager
-lora-finetuning-job-s3 |     return __cache_cls(_base32(key))
-lora-finetuning-job-s3 |   File "/usr/local/lib/python3.10/dist-packages/triton/runtime/cache.py", line 69, in __init__
-lora-finetuning-job-s3 |     os.makedirs(self.cache_dir, exist_ok=True)
-lora-finetuning-job-s3 |   File "/usr/lib/python3.10/os.py", line 215, in makedirs
-lora-finetuning-job-s3 |     makedirs(head, exist_ok=exist_ok)
-lora-finetuning-job-s3 |   File "/usr/lib/python3.10/os.py", line 215, in makedirs
-lora-finetuning-job-s3 |     makedirs(head, exist_ok=exist_ok)
-lora-finetuning-job-s3 |   File "/usr/lib/python3.10/os.py", line 215, in makedirs
-lora-finetuning-job-s3 |     makedirs(head, exist_ok=exist_ok)
-lora-finetuning-job-s3 |   File "/usr/lib/python3.10/os.py", line 225, in makedirs
-lora-finetuning-job-s3 |     mkdir(name, mode)
-lora-finetuning-job-s3 | PermissionError: [Errno 13] Permission denied: '/home/ai_dev'
-lora-finetuning-job-s3 exited with code 1
+services:
+  finetuner:
+    image: finetune_whisper_lora:v3
+    container_name: lora-finetuning-job-s3
+
+    user: "${HOST_UID}:${HOST_GID}"
+
+    env_file:
+      - .env
+
+    environment:
+      - HF_HOME=/app/.cache/huggingface
+      - TORCH_HOME=/app/.cache/torch
+      - AWS_CA_BUNDLE=/app/ca-bundle.crt
+      
+      ### ADD THESE LINES ###
+      # Redirect the Triton compiler cache to a writable directory we control.
+      # This directly solves the PermissionError.
+      - TRITON_CACHE_DIR=/app/.cache/triton
+      # It's also good practice to redirect the numba cache.
+      - NUMBA_CACHE_DIR=/app/.cache/numba
+
+    working_dir: /app
+
+    volumes:
+      - .:/app
+      - ./.cache:/app/.cache
+      - ${ANNOTATIONS_FILE_PATH}:${ANNOTATIONS_FILE_IN_CONTAINER}:ro
+      - ${S3_CA_BUNDLE_PATH}:/app/ca-bundle.crt:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ./outputs:/app/outputs
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ['${MIG_DEVICE_UUID}']
+
+    command: python3 finetune_lora.py

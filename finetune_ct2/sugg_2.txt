@@ -71,18 +71,20 @@ def main():
         BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.bfloat16
     )
     
-    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
+    ### MAJOR FIX: DISABLED GRADIENT CHECKPOINTING FOR HYBRID TRAINING STABILITY ###
+    # The `prepare_model_for_kbit_training` function enables gradient checkpointing, which is
+    # the most likely source of conflict when unfreezing parts of the base model.
+    # We disable it here (`use_gradient_checkpointing=False`) to prevent memory corruption.
+    # This is the most critical change to ensure stability for hybrid fine-tuning.
+    logging.info("Preparing model for training. Gradient checkpointing is DISABLED for stability.")
+    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=False)
     
     logging.info("Applying LoRA adapter...")
     model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
 
-    ### FIX: STABLE HYBRID TRAINING IMPLEMENTATION ###
-    # Instead of using an unstable forward hook, we manually unfreeze the desired layers
-    # by iterating through the model's parameters before training begins. This is the
-    # correct and stable method for hybrid fine-tuning.
+    # Re-instating the stable method for unfreezing layers
     logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
     for name, param in model.named_parameters():
-        # Unfreeze the convolutional layers
         if "conv1" in name or "conv2" in name:
             param.requires_grad = True
             
@@ -109,9 +111,7 @@ def main():
         load_best_model_at_end=True,
         metric_for_best_model="wer",
         greater_is_better=False,
-        # Set to 0 to prevent the _pin_memory_loop error, which is a common
-        # issue with multi-process data loading and CUDA.
-        dataloader_num_workers=0,
+        dataloader_num_workers=0, # Keep at 0 to avoid other CUDA errors
         generation_max_length=448,
     )
 

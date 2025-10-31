@@ -67,22 +67,19 @@ def main():
 
     # 2. Model Loading and Hybrid Fine-Tuning Setup
     logging.info("Loading base model...")
+    ### MAJOR FIX: SWITCHING FROM bfloat16 TO float16 FOR STABILITY ###
+    # The bfloat16 data type may be causing numerical instability with hybrid tuning.
+    # We are switching to the more mature and stable float16.
     model = WhisperForConditionalGeneration.from_pretrained(
-        BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.bfloat16
+        BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.float16
     )
     
-    ### MAJOR FIX: DISABLED GRADIENT CHECKPOINTING FOR HYBRID TRAINING STABILITY ###
-    # The `prepare_model_for_kbit_training` function enables gradient checkpointing, which is
-    # the most likely source of conflict when unfreezing parts of the base model.
-    # We disable it here (`use_gradient_checkpointing=False`) to prevent memory corruption.
-    # This is the most critical change to ensure stability for hybrid fine-tuning.
-    logging.info("Preparing model for training. Gradient checkpointing is DISABLED for stability.")
+    # We keep gradient checkpointing disabled as it's another potential conflict.
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=False)
     
     logging.info("Applying LoRA adapter...")
     model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
 
-    # Re-instating the stable method for unfreezing layers
     logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
     for name, param in model.named_parameters():
         if "conv1" in name or "conv2" in name:
@@ -92,7 +89,6 @@ def main():
 
     # 3. Training Arguments
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
-    has_bf16 = torch.cuda.is_bf16_supported()
     training_args = Seq2SeqTrainingArguments(
         output_dir=NEW_ADAPTER_SAVE_PATH,
         per_device_train_batch_size=16,
@@ -100,8 +96,10 @@ def main():
         learning_rate=5e-6,
         warmup_steps=50,
         num_train_epochs=5,
-        bf16=has_bf16,
-        fp16=not has_bf16,
+        ### MAJOR FIX: EXPLICITLY ENABLE fp16 and DISABLE bf16 ###
+        # This must match the model's torch_dtype for mixed-precision training.
+        bf16=False,
+        fp16=True,
         optim="adamw_torch",
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -111,7 +109,7 @@ def main():
         load_best_model_at_end=True,
         metric_for_best_model="wer",
         greater_is_better=False,
-        dataloader_num_workers=0, # Keep at 0 to avoid other CUDA errors
+        dataloader_num_workers=0,
         generation_max_length=448,
     )
 

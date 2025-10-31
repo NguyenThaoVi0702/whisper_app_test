@@ -1,36 +1,157 @@
 
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose up -d
-Creating network "finetunning_20251031_default" with the default driver
-Creating lora-finetuning-job-s3 ... done
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ docker compose logs -f
-WARN[0000] The "HOST_UID" variable is not set. Defaulting to a blank string.
-WARN[0000] The "HOST_GID" variable is not set. Defaulting to a blank string.
+lora-finetuning-job-s3  | =========================================
+lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
+lora-finetuning-job-s3  | =========================================
 lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  | == CUDA ==
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | CUDA Version 12.0.1
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
-lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | 2025-10-31 08:45:25,903 - ERROR - Failed to create or verify S3 client: An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
+lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
+lora-finetuning-job-s3  | 2025-10-31 09:46:33,258 - INFO - S3 client initialized and connection to bucket 'lhl-s3-a544-aipage-bbh' verified successfully.
+lora-finetuning-job-s3  | 2025-10-31 09:46:33,702 - INFO - Loading and parsing annotations from /app/annotations.json...
+lora-finetuning-job-s3  | 2025-10-31 09:46:33,717 - WARNING - Skipped 120 tasks due to missing audio URI or transcriptions.
+lora-finetuning-job-s3  | 2025-10-31 09:46:33,717 - INFO - Successfully parsed 397 valid data entries.
+lora-finetuning-job-s3  | 2025-10-31 09:46:33,725 - INFO - Processing 357 training samples with augmentation...
+lora-finetuning-job-s3  | Parameter 'function'=<function main.<locals>.<lambda> at 0x7ff07cbc39a0> of the transform datasets.arrow_dataset.Dataset._map_single couldn't be hashed properly, a random hash was used instead. Make sure your transforms and parameters are serializable with pickle or dill for the dataset fingerprinting and caching to work. If you reuse this transform, the caching mechanism will consider it to be different from the previous calls and recompute everything. This warning is only showed once. Subsequent hashing failures won't be showed.
+lora-finetuning-job-s3  | 2025-10-31 09:46:34,485 - WARNING - Parameter 'function'=<function main.<locals>.<lambda> at 0x7ff07cbc39a0> of the transform datasets.arrow_dataset.Dataset._map_single couldn't be hashed properly, a random hash was used instead. Make sure your transforms and parameters are serializable with pickle or dill for the dataset fingerprinting and caching to work. If you reuse this transform, the caching mechanism will consider it to be different from the previous calls and recompute everything. This warning is only showed once. Subsequent hashing failures won't be showed.
+Map (num_proc=4):   0%|          | 0/357 [00:02<?, ? examples/s]
 lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/app/finetune_hybrid.py", line 53, in <module>
-lora-finetuning-job-s3  |     s3_client = get_s3_client()
-lora-finetuning-job-s3  |   File "/app/finetune_hybrid.py", line 46, in get_s3_client
-lora-finetuning-job-s3  |     s3_client.list_buckets()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/botocore/client.py", line 602, in _api_call
-lora-finetuning-job-s3  |     return self._make_api_call(operation_name, kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/botocore/context.py", line 123, in wrapper
-lora-finetuning-job-s3  |     return func(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/botocore/client.py", line 1078, in _make_api_call
-lora-finetuning-job-s3  |     raise error_class(parsed_response, operation_name)
-lora-finetuning-job-s3  | botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ ^C
+lora-finetuning-job-s3  |   File "/app/prepare_data.py", line 162, in <module>
+lora-finetuning-job-s3  |     main()
+lora-finetuning-job-s3  |   File "/app/prepare_data.py", line 145, in main
+lora-finetuning-job-s3  |     train_dataset = train_dataset_raw.map(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 557, in wrapper
+lora-finetuning-job-s3  |     out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/datasets/arrow_dataset.py", line 3171, in map
+lora-finetuning-job-s3  |     for rank, done, content in iflatmap_unordered(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/datasets/utils/py_utils.py", line 728, in iflatmap_unordered
+lora-finetuning-job-s3  |     [async_result.get(timeout=0.05) for async_result in async_results]
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/datasets/utils/py_utils.py", line 728, in <listcomp>
+lora-finetuning-job-s3  |     [async_result.get(timeout=0.05) for async_result in async_results]
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/multiprocess/pool.py", line 774, in get
+lora-finetuning-job-s3  |     raise self._value
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/multiprocess/pool.py", line 540, in _handle_tasks
+lora-finetuning-job-s3  |     put(task)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/multiprocess/connection.py", line 209, in send
+lora-finetuning-job-s3  |     self._send_bytes(_ForkingPickler.dumps(obj))
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/multiprocess/reduction.py", line 54, in dumps
+lora-finetuning-job-s3  |     cls(buf, protocol, *args, **kwds).dump(obj)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 420, in dump
+lora-finetuning-job-s3  |     StockPickler.dump(self, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 487, in dump
+lora-finetuning-job-s3  |     self.save(obj)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 902, in save_tuple
+lora-finetuning-job-s3  |     save(element)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 887, in save_tuple
+lora-finetuning-job-s3  |     save(element)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1217, in save_module_dict
+lora-finetuning-job-s3  |     StockPickler.save_dict(pickler, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 972, in save_dict
+lora-finetuning-job-s3  |     self._batch_setitems(obj.items())
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 998, in _batch_setitems
+lora-finetuning-job-s3  |     save(v)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1985, in save_function
+lora-finetuning-job-s3  |     _save_with_postproc(pickler, (_create_function, (
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1117, in _save_with_postproc
+lora-finetuning-job-s3  |     pickler.save_reduce(*reduction)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 692, in save_reduce
+lora-finetuning-job-s3  |     save(args)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 887, in save_tuple
+lora-finetuning-job-s3  |     save(element)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 603, in save
+lora-finetuning-job-s3  |     self.save_reduce(obj=obj, *rv)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 717, in save_reduce
+lora-finetuning-job-s3  |     save(state)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1217, in save_module_dict
+lora-finetuning-job-s3  |     StockPickler.save_dict(pickler, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 972, in save_dict
+lora-finetuning-job-s3  |     self._batch_setitems(obj.items())
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 998, in _batch_setitems
+lora-finetuning-job-s3  |     save(v)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 603, in save
+lora-finetuning-job-s3  |     self.save_reduce(obj=obj, *rv)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 717, in save_reduce
+lora-finetuning-job-s3  |     save(state)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1217, in save_module_dict
+lora-finetuning-job-s3  |     StockPickler.save_dict(pickler, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 972, in save_dict
+lora-finetuning-job-s3  |     self._batch_setitems(obj.items())
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 998, in _batch_setitems
+lora-finetuning-job-s3  |     save(v)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 603, in save
+lora-finetuning-job-s3  |     self.save_reduce(obj=obj, *rv)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 717, in save_reduce
+lora-finetuning-job-s3  |     save(state)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1217, in save_module_dict
+lora-finetuning-job-s3  |     StockPickler.save_dict(pickler, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 972, in save_dict
+lora-finetuning-job-s3  |     self._batch_setitems(obj.items())
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 998, in _batch_setitems
+lora-finetuning-job-s3  |     save(v)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 603, in save
+lora-finetuning-job-s3  |     self.save_reduce(obj=obj, *rv)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 717, in save_reduce
+lora-finetuning-job-s3  |     save(state)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1217, in save_module_dict
+lora-finetuning-job-s3  |     StockPickler.save_dict(pickler, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 972, in save_dict
+lora-finetuning-job-s3  |     self._batch_setitems(obj.items())
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 998, in _batch_setitems
+lora-finetuning-job-s3  |     save(v)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 560, in save
+lora-finetuning-job-s3  |     f(self, obj)  # Call unbound method with explicit self
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 1217, in save_module_dict
+lora-finetuning-job-s3  |     StockPickler.save_dict(pickler, obj)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 972, in save_dict
+lora-finetuning-job-s3  |     self._batch_setitems(obj.items())
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 998, in _batch_setitems
+lora-finetuning-job-s3  |     save(v)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/dill/_dill.py", line 414, in save
+lora-finetuning-job-s3  |     StockPickler.save(self, obj, save_persistent_id)
+lora-finetuning-job-s3  |   File "/usr/lib/python3.10/pickle.py", line 578, in save
+lora-finetuning-job-s3  |     rv = reduce(self.proto)
+lora-finetuning-job-s3  | TypeError: cannot pickle 'SSLContext' object
+lora-finetuning-job-s3 exited with code 1

@@ -1,10 +1,16 @@
 import os
-import glob
-import logging  # NEW: For warning suppression
+import json
+import io
+import logging
 from dataclasses import dataclass
+
 import torch
-import numpy as np  
-from datasets import load_dataset, Audio
+import numpy as np
+import boto3
+import librosa
+from datasets import Dataset, Audio, enable_progress_bar
+from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, Gain
+
 from transformers import (
     WhisperForConditionalGeneration,
     WhisperProcessor,
@@ -12,163 +18,221 @@ from transformers import (
     Seq2SeqTrainer,
     utils,
 )
-from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training, LoraConfig
-import jiwer  
+from peft import PeftModel, prepare_model_for_kbit_training
+import jiwer
+
+enable_progress_bar()
+utils.logging.set_verbosity_error()
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-utils.logging.set_verbosity_error()  
-os.environ["TOKENIZERS_PARALLELISM"] = "false"  
+BASE_MODEL_PATH = "/app/model"
+ADAPTER_TO_CONTINUE_FROM = "/app/my-whisper-medium-lora"
+NEW_ADAPTER_SAVE_PATH = "/app/outputs/whisper_adapter_20251031"
+ANNOTATIONS_FILE_IN_CONTAINER = "/app/annotations.json"
 
-BASE_MODEL_PATH = "./model"  
-ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"  
-DATASET_PATH = "/tmp/viet_bud500"  
-NEW_ADAPTER_SAVE_PATH = "./new_whisper_vietbud500_adapter"
+
+# --- S3 Client Setup ---
+def get_s3_client():
+    """Initializes and returns a boto3 S3 client using credentials from environment variables."""
+    try:
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("AWS_REGION"),
+        )
+        
+
+        bucket_name = os.environ.get("S3_BUCKET_NAME")
+        if not bucket_name:
+            raise ValueError("S3_BUCKET_NAME environment variable not set.")
+
+
+        s3_client.head_bucket(Bucket=bucket_name)
+        logging.info(f"S3 client initialized and connection to bucket '{bucket_name}' verified successfully.")
+        return s3_client
+
+    except Exception as e:
+        logging.error(f"Failed to create or verify S3 client: {e}")
+        raise
+
+s3_client = get_s3_client()
+
+
+def load_and_prepare_data_from_s3(annotations_path):
+    """
+    Parses the JSON annotation file, downloads audio from S3,
+    and structures the data for the Hugging Face Dataset.
+    """
+    logging.info(f"Loading annotations from {annotations_path}...")
+    with open(annotations_path, 'r', encoding='utf-8') as f:
+        annotations = json.load(f)
+
+    data = {"audio_path": [], "transcription": []}
+    skipped_count = 0
+
+    for task in annotations:
+        s3_uri = task.get("data", {}).get("audio")
+        if not s3_uri:
+            skipped_count += 1
+            continue
+
+        full_transcription = []
+        segments = []
+        if task.get("annotations"):
+            for result in task["annotations"][0].get("result", []):
+                if result.get("from_name") == "transcription":
+                    start_time = result.get("value", {}).get("start", 0)
+                    text = " ".join(result.get("value", {}).get("text", [])).strip()
+                    label = "unknown"
+                    for label_result in task["annotations"][0].get("result", []):
+                        if label_result.get("id") == result.get("id") and label_result.get("from_name") == "label":
+                           label = " ".join(label_result.get("value",{}).get("labels",[]))
+                           break
+                    if "noise" not in label.lower() and text:
+                        segments.append((start_time, text))
+
+        if not segments:
+            skipped_count += 1
+            continue
+
+        segments.sort(key=lambda x: x[0])
+        full_transcription = " ".join([text for start_time, text in segments])
+
+        data["audio_path"].append(s3_uri)
+        data["transcription"].append(full_transcription)
+
+    if skipped_count > 0:
+        logging.warning(f"Skipped {skipped_count} tasks due to missing audio URI or transcriptions.")
+
+    logging.info(f"Successfully parsed {len(data['audio_path'])} valid data entries.")
+    return Dataset.from_dict(data)
+
+# --- Data Augmentation Pipeline ---
+augment_pipeline = Compose([
+    Gain(min_gain_db=-6, max_gain_db=6, p=0.3),
+    AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.3),
+    TimeStretch(min_rate=0.9, max_rate=1.1, p=0.2),
+    PitchShift(min_semitones=-2, max_semitones=2, p=0.2),
+])
+
+def download_and_process_audio(batch, is_training=False):
+    """
+    Downloads an audio file from S3, processes it, and optionally applies augmentation.
+    """
+    s3_uri = batch["audio_path"]
+    bucket = s3_uri.split('/')[2]
+    key = '/'.join(s3_uri.split('/')[3:])
+
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        audio_bytes = response['Body'].read()
+        
+        audio_array, sampling_rate = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+
+        if is_training:
+            audio_array = augment_pipeline(samples=audio_array, sample_rate=16000)
+
+        batch["audio"] = {"path": s3_uri, "array": audio_array, "sampling_rate": 16000}
+        batch["input_features"] = processor.feature_extractor(audio_array, sampling_rate=16000).input_features[0]
+        batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
+        return batch
+
+    except Exception as e:
+        logging.error(f"Failed to process {s3_uri}: {e}")
+        return None
+
+
+# --- MAIN SCRIPT EXECUTION ---
 
 processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
 
 
-use_quantization = True
-quantization_config = None
-if use_quantization:
-    from transformers import BitsAndBytesConfig
-    quantization_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        bnb_8bit_compute_dtype=torch.bfloat16,
-    )
-
+use_quantization = False
 model = WhisperForConditionalGeneration.from_pretrained(
     BASE_MODEL_PATH,
     device_map="auto",
     use_cache=False,
     torch_dtype=torch.bfloat16,
-    quantization_config=quantization_config,
 )
-
 model.config.forced_decoder_ids = None
-model.config.suppress_tokens = []  
-
+model.config.suppress_tokens = []
 model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
-
 model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
 
-if not use_quantization:
-    model.model.model.encoder.conv1.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
-
+logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
+for name, param in model.model.model.encoder.named_parameters():
+    if "conv" in name:
+        param.requires_grad = True
 model.print_trainable_parameters()
 
 
-parquet_dir = os.path.join(DATASET_PATH, "data")
-train_files = {"train": glob.glob(f"{parquet_dir}/train-*.parquet")}
-val_files = {"train": glob.glob(f"{parquet_dir}/validation-*.parquet")}  
+raw_dataset = load_and_prepare_data_from_s3(ANNOTATIONS_FILE_IN_CONTAINER)
+dataset_dict = raw_dataset.train_test_split(test_size=0.1, seed=42)
 
-train_dataset = load_dataset('parquet', data_files=train_files).cast_column("audio", Audio(sampling_rate=16000))["train"]
-val_dataset = load_dataset('parquet', data_files=val_files).cast_column("audio", Audio(sampling_rate=16000))["train"]
+logging.info("Processing training dataset with augmentation...")
+train_dataset = dataset_dict["train"].map(lambda x: download_and_process_audio(x, is_training=True), num_proc=4)
 
-def filter_data(example):
-    audio_len = len(example["audio"]["array"])
-    return 16000 < audio_len < 480000 and len(example["transcription"]) > 5
+logging.info("Processing validation dataset without augmentation...")
+val_dataset = dataset_dict["test"].map(lambda x: download_and_process_audio(x, is_training=False), num_proc=4)
 
-print("Original train size:", len(train_dataset))
-train_dataset = train_dataset.filter(filter_data, num_proc=1)
-print("Filtered train size:", len(train_dataset))
+train_dataset = train_dataset.filter(lambda example: example["audio"] is not None)
+val_dataset = val_dataset.filter(lambda example: example["audio"] is not None)
 
-print("Original val size:", len(val_dataset))
-val_dataset = val_dataset.filter(filter_data, num_proc=1)
-print("Filtered val size:", len(val_dataset))
-
-def prepare_dataset(batch):
-    audio = batch["audio"]
-    batch["input_features"] = processor.feature_extractor(
-        audio["array"], sampling_rate=16000
-    ).input_features[0]
-    batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
-    batch["input_length"] = int(len(audio["array"]))
-    batch["labels_length"] = int(len(batch["labels"]))
-    return batch
-
-train_dataset = train_dataset.map(prepare_dataset, remove_columns=train_dataset.column_names, num_proc=1)
-val_dataset = val_dataset.map(prepare_dataset, remove_columns=val_dataset.column_names, num_proc=1)
-
-def filter_inputs(length):
-    return 0 < length < 480000 
-
-def filter_labels(length):
-    return length < 448  
-
-train_dataset = train_dataset.filter(filter_inputs, input_columns=["input_length"])
-train_dataset = train_dataset.filter(filter_labels, input_columns=["labels_length"])
-val_dataset = val_dataset.filter(filter_inputs, input_columns=["input_length"])
-val_dataset = val_dataset.filter(filter_labels, input_columns=["labels_length"])
-
-train_dataset = train_dataset.remove_columns(["input_length", "labels_length"])
-val_dataset = val_dataset.remove_columns(["input_length", "labels_length"])
-
-train_dataset = train_dataset.shuffle(seed=42)
 
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
-    processor: WhisperProcessor  
-
+    processor: WhisperProcessor
     def __call__(self, features):
         input_features = [{"input_features": feature["input_features"]} for feature in features]
         label_features = [{"input_ids": feature["labels"]} for feature in features]
-
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
         labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
-
         labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
-
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
-
         batch["labels"] = labels
         return batch
 
 data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
 def compute_metrics(pred):
-    pred_ids = pred.predictions
-    if isinstance(pred_ids, tuple):
-        pred_ids = pred_ids[0]
-    pred_ids = np.array(pred_ids) if not isinstance(pred_ids, np.ndarray) else pred_ids
+    pred_ids = pred.predictions[0] if isinstance(pred.predictions, tuple) else pred.predictions
     label_ids = pred.label_ids
     label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
-    label_ids = np.array(label_ids) if not isinstance(label_ids, np.ndarray) else label_ids
     pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
     label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
     wer = jiwer.wer(label_str, pred_str)
     return {"wer": wer}
 
+
 has_bf16 = torch.cuda.is_bf16_supported()
 training_args = Seq2SeqTrainingArguments(
     output_dir=NEW_ADAPTER_SAVE_PATH,
-    per_device_train_batch_size=16,  
-    per_device_eval_batch_size=4,  
-    gradient_accumulation_steps=4, 
-    learning_rate=1e-5,  
+    per_device_train_batch_size=16,
+    gradient_accumulation_steps=4,
+    learning_rate=5e-6,
     warmup_steps=50,
-    max_steps=5000,  
+    num_train_epochs=5, 
     bf16=has_bf16,
     fp16=not has_bf16,
     optim="adamw_torch",
-    do_eval=True,
-    eval_strategy="steps",
-    eval_steps=500,
-    save_strategy="steps",
-    save_steps=500,
-    save_total_limit=3,
-    logging_steps=25,
+    evaluation_strategy="epoch",
+    save_strategy="epoch",
+    save_total_limit=2,
+    logging_steps=10,
     report_to=["tensorboard"],
     load_best_model_at_end=True,
     metric_for_best_model="wer",
     greater_is_better=False,
-    remove_unused_columns=False,
+    remove_unused_columns=False, 
     label_names=["labels"],
-    predict_with_generate=True, 
-    dataloader_num_workers=0,  
+    predict_with_generate=True,
+    dataloader_num_workers=4,
     generation_max_length=448,
-    generation_num_beams=1,
-    disable_tqdm=False,
 )
 
 
@@ -178,16 +242,16 @@ trainer = Seq2SeqTrainer(
     train_dataset=train_dataset,
     eval_dataset=val_dataset,
     data_collator=data_collator,
-    processing_class=processor,  
-    compute_metrics=compute_metrics,  
+    compute_metrics=compute_metrics,
+    processor=processor,
 )
 
-print("Starting continued training with evaluation...")
+logging.info("Starting fine-tuning with data from S3 and audio augmentation...")
 trainer.train()
 
-print("Final evaluation:")
+logging.info("Final evaluation on the best model:")
 final_metrics = trainer.evaluate()
-print(f"Final WER: {final_metrics['eval_wer']:.4f}")
+logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
 
-print(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
+logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
 trainer.save_model()

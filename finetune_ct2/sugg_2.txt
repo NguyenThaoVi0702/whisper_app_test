@@ -1,3 +1,5 @@
+# train_model.py
+
 import os
 import logging
 from dataclasses import dataclass
@@ -20,14 +22,19 @@ utils.logging.set_verbosity_error()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Configuration Paths ---
-BASE_MODEL_PATH = "/app/model"
-ADAPTER_TO_CONTINUE_FROM = "/app/my-whisper-medium-lora"
+BASE_MODEL_PATH = "./model"
+ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora"
 NEW_ADAPTER_SAVE_PATH = "/app/outputs/vietbud500_adapter_final"
-# The input directories for our cached, processed data
 PROCESSED_TRAIN_PATH = "/app/processed_data/train"
 PROCESSED_VAL_PATH = "/app/processed_data/validation"
 
-# --- Data Collator and Metrics (No changes needed) ---
+### NEW: Define Processor at the Global Scope ###
+logging.info("Loading Whisper processor...")
+processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+
+
+# --- Data Collator and Metrics ---
+# Now, these can safely access the global 'processor' variable
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: WhisperProcessor
@@ -37,7 +44,8 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
         labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
         labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
-        if (labels[:, 0] == processor.tokenizer.bos_token_id).all().cpu().item():
+        # This now correctly uses self.processor, which is best practice
+        if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
         batch["labels"] = labels
         return batch
@@ -52,10 +60,10 @@ def compute_metrics(pred):
     return {"wer": wer}
 
 def main():
-    # 1. Load Processor
-    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+    ### MODIFIED ###
+    # We no longer load the processor here, it's already loaded globally.
 
-    # 2. Load Pre-processed Datasets from Disk (This is super fast!)
+    # 2. Load Pre-processed Datasets from Disk
     logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
     train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
     logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
@@ -71,7 +79,6 @@ def main():
     model.config.suppress_tokens = []
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
     model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
-
     logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
     for name, param in model.model.model.encoder.named_parameters():
         if "conv" in name:
@@ -113,7 +120,6 @@ def main():
         compute_metrics=compute_metrics,
         processing_class=processor,
     )
-
     logging.info("Starting model training...")
     trainer.train()
 

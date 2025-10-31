@@ -78,9 +78,14 @@ def main():
     logging.info("Applying LoRA adapter...")
     model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
 
-    logging.info("Applying forward_hook to convolutional layers for hybrid fine-tuning...")
-    model.model.model.encoder.conv1.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
-    model.model.model.encoder.conv2.register_forward_hook(lambda module, input, output: output.requires_grad_(True))
+    ### FIX #3: Replaced unstable forward_hook with a stable method to unfreeze layers ###
+    # The forward_hook approach to enable gradients is unstable.
+    # A better practice is to iterate through model parameters and set requires_grad = True
+    # on the desired layers before training begins.
+    logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
+    for name, param in model.named_parameters():
+        if 'conv1' in name or 'conv2' in name:
+            param.requires_grad = True
             
     model.print_trainable_parameters()
 
@@ -97,7 +102,7 @@ def main():
         bf16=has_bf16,
         fp16=not has_bf16,
         optim="adamw_torch",
-        eval_strategy="epoch",
+        eval_strategy="epoch",  # Kept as requested
         save_strategy="epoch",
         save_total_limit=2,
         logging_steps=10,
@@ -106,6 +111,8 @@ def main():
         metric_for_best_model="wer",
         greater_is_better=False,
         dataloader_num_workers=4,
+        ### FIX #4: Added dataloader_pin_memory=False to prevent potential CUDA context errors ###
+        dataloader_pin_memory=False,
         generation_max_length=448,
     )
 
@@ -117,7 +124,7 @@ def main():
         eval_dataset=val_dataset,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
-        processing_class=processor,
+        tokenizer=processor.feature_extractor, # Kept `processing_class` from original intent (now `tokenizer`)
     )
     
     logging.info("Starting model training...")
@@ -132,107 +139,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-==================
-
-error:
-
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ docker compose logs -f
-WARN[0000] The "HOST_UID" variable is not set. Defaulting to a blank string.
-WARN[0000] The "HOST_GID" variable is not set. Defaulting to a blank string.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  | == CUDA ==
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | CUDA Version 12.0.1
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
-lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
-lora-finetuning-job-s3  | 2025-10-31 10:33:02,289 - INFO - Pre-processed data already found on disk. Skipping data preparation.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
-lora-finetuning-job-s3  | 2025-10-31 10:33:07,278 - INFO - Loading Whisper processor...
-lora-finetuning-job-s3  | 2025-10-31 10:33:07,627 - INFO - Loading pre-processed training data from /app/processed_data/train...
-lora-finetuning-job-s3  | 2025-10-31 10:33:07,635 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
-lora-finetuning-job-s3  | 2025-10-31 10:33:07,637 - INFO - Datasets loaded successfully.
-lora-finetuning-job-s3  | 2025-10-31 10:33:07,637 - INFO - Loading base model...
-lora-finetuning-job-s3  | 2025-10-31 10:33:07,899 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
-lora-finetuning-job-s3  | 2025-10-31 10:33:08,682 - INFO - Applying LoRA adapter...
-lora-finetuning-job-s3  | 2025-10-31 10:33:08,956 - INFO - Applying forward_hook to convolutional layers for hybrid fine-tuning...
-lora-finetuning-job-s3  | 2025-10-31 10:33:09,056 - INFO - Starting model training...
-lora-finetuning-job-s3  | trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 138, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 128, in main
-lora-finetuning-job-s3  |     trainer.train()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2245, in train
-lora-finetuning-job-s3  |     return inner_training_loop(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2560, in _inner_training_loop
-lora-finetuning-job-s3  |     tr_loss_step = self.training_step(model, inputs, num_items_in_batch)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3736, in training_step
-lora-finetuning-job-s3  |     loss = self.compute_loss(model, inputs, num_items_in_batch=num_items_in_batch)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3801, in compute_loss
-lora-finetuning-job-s3  |     outputs = model(**inputs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/utils/operations.py", line 818, in forward
-lora-finetuning-job-s3  |     return model_forward(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/utils/operations.py", line 806, in __call__
-lora-finetuning-job-s3  |     return convert_to_fp32(self.model_forward(*args, **kwargs))
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
-lora-finetuning-job-s3  |     return func(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/peft/peft_model.py", line 818, in forward
-lora-finetuning-job-s3  |     return self.get_base_model()(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1776, in forward
-lora-finetuning-job-s3  |     outputs = self.model(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1627, in forward
-lora-finetuning-job-s3  |     encoder_outputs = self.encoder(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1069, in forward
-lora-finetuning-job-s3  |     layer_outputs = encoder_layer(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 621, in forward
-lora-finetuning-job-s3  |     hidden_states = self.self_attn_layer_norm(hidden_states)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-lora-finetuning-job-s3  |     return self._call_impl(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-lora-finetuning-job-s3  |     return forward_call(*args, **kwargs)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/normalization.py", line 217, in forward
-lora-finetuning-job-s3  |     return F.layer_norm(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/nn/functional.py", line 2910, in layer_norm
-lora-finetuning-job-s3  |     return torch.layer_norm(
-lora-finetuning-job-s3  | RuntimeError: NVML_SUCCESS == r INTERNAL ASSERT FAILED at "/pytorch/c10/cuda/CUDACachingAllocator.cpp":1016, please report a bug to PyTorch.
-lora-finetuning-job-s3  | Exception in thread Thread-3 (_pin_memory_loop):
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/lib/python3.10/threading.py", line 1016, in _bootstrap_inner
-lora-finetuning-job-s3 exited with code 1

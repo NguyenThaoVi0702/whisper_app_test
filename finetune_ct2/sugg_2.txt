@@ -1,48 +1,91 @@
-Of course. Using Docker Compose is an excellent way to define and run your application in a declarative, reproducible manner. It's a significant improvement over a long docker run command in a shell script.
+Absolutely. Using Docker Compose is an excellent way to manage this setup. It's a declarative, reproducible, and much cleaner approach than a long docker run command in a shell script.
 
-Here is a complete guide to replacing your run_temp.sh with a docker-compose.yml file.
+I will provide a complete solution that:
 
-Step 1: Update Your .env File for Docker Compose
+Uses a docker-compose.yml file to define the service.
 
-We'll centralize all configuration variables—including paths and GPU info—into your .env file. This makes your docker-compose.yml completely static and reusable.
+Uses two separate environment files: secrets.env for your S3 credentials and config.env for non-sensitive configuration, as you requested.
 
-Replace the contents of your .env file with the following. Remember to fill in your specific values.
+Correctly handles the User ID (UID) and Group ID (GID) to avoid permission issues with your mounted files.
 
-.env
+Step 1: Directory Structure
+
+Organize your project files like this. This structure keeps everything clean and separate.
+
+code
+Code
+download
+content_copy
+expand_less
+.
+├── docker-compose.yml
+├── secrets.env         <-- S3 secrets go here
+├── config.env          <-- Non-secret paths and settings go here
+├── your_annotations.json
+├── .gitignore
+└── your_ca_bundle.crt  <-- Your CA certificate file
+Step 2: Create the Environment Files
+A) secrets.env (For S3 Credentials)
+
+Create this file and add your sensitive credentials. This file should be kept private and never committed to Git.
+
 code
 Ini
 download
 content_copy
 expand_less
-# S3 Configuration
-S3_ENDPOINT_URL=YOUR_S3_URL_ENDPOINT
+# S3 Secret Credentials
+# This file should be listed in .gitignore
 AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
 AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
+B) config.env (For Non-Secret Configuration)
+
+Create this file for all other configuration. This makes your docker-compose.yml file cleaner and more reusable.
+
+code
+Ini
+download
+content_copy
+expand_less
+# Non-Secret Configuration for Fine-Tuning
+S3_ENDPOINT_URL=YOUR_S3_URL_ENDPOINT
 AWS_REGION=YOUR_BUCKET_REGION
 
-# Docker & Container Configuration
-# The name and tag of your Docker image
-IMAGE_NAME=finetune_whisper_lora:v3
-# The name for the running container
-CONTAINER_NAME=lora-finetuning-job-compose
-# The specific MIG device UUID to use
+# --- GPU Configuration ---
+# Get this from your 'nvidia-smi' output
 MIG_DEVICE_UUID=MIG-GPU-a45fc4b1-c85e-5a3b-8b3d-79191377ec06/4/0
 
-# --- HOST MACHINE PATHS ---
-# These paths are on the machine where you run 'docker compose'
+# --- Host File Paths ---
+# IMPORTANT: Use absolute paths for Compose to avoid ambiguity
+S3_CA_BUNDLE_PATH=/path/on/host/to/your_ca_bundle.crt
+ANNOTATIONS_FILE_PATH=/path/on/host/to/your_annotations.json
 
-# Absolute path to your JSON annotations file
-ANNOTATIONS_FILE_PATH=/path/to/your/your_annotations.json
-# Absolute path to your CA certificate
-S3_CA_BUNDLE_PATH=/path/to/your/ca-bundle.crt
+# --- Container File Paths ---
+ANNOTATIONS_FILE_IN_CONTAINER=/app/annotations.json
 
-Important: It's best to use absolute paths (e.g., /home/user/project/your_annotations.json) for the file paths in your .env file to avoid any ambiguity when Docker Compose runs.
+Important: Replace the /path/on/host/to/... with the full, absolute paths to those files on your machine.
 
-Step 2: Create the docker-compose.yml File
+Step 3: Create the .gitignore File
 
-In the same directory as your .env file, create a new file named docker-compose.yml. This file will define your fine-tuning service, telling Docker exactly how to build and run it.
+Ensure you have a .gitignore file with the following content to prevent committing secrets and cache files.
 
-docker-compose.yml
+code
+Code
+download
+content_copy
+expand_less
+# Ignore environment files containing secrets
+secrets.env
+
+# Ignore python cache
+__pycache__/
+
+# Ignore cache directories
+.cache/
+Step 4: Create the docker-compose.yml File
+
+This is the core of the solution. It declaratively defines everything your run_temp.sh script was doing.
+
 code
 Yaml
 download
@@ -51,63 +94,69 @@ expand_less
 version: '3.8'
 
 services:
-  finetune-whisper:
-    # Use the image name defined in the .env file
-    image: ${IMAGE_NAME}
-    
-    # Set the container name for easy identification
-    container_name: ${CONTAINER_NAME}
-    
-    # Run the container as the current host user to avoid permission issues with mounted files
-    # This requires you to run 'export UID=$(id -u) GID=$(id -g)' in your shell before starting
+  finetuner:
+    # Use the same image as before
+    image: finetune_whisper_lora:v3
+    container_name: lora-finetuning-job-s3
+
+    # This is how we handle the User ID and Group ID.
+    # We will pass these variables from the host machine before running compose.
     user: "${UID}:${GID}"
-    
-    # The command to execute when the container starts
-    command: python3 finetune_lora.py
-    
-    # The working directory inside the container
-    working_dir: /app
-    
-    # Load all variables from the .env file into the container's environment
-    env_file: .env
-    
-    # Set additional environment variables needed by the application
+
+    # Load environment variables from our two separate files
+    env_file:
+      - config.env
+      - secrets.env
+
+    # Define other environment variables
     environment:
       - HF_HOME=/app/.cache/huggingface
       - TORCH_HOME=/app/.cache/torch
-      # Tell boto3 (and other tools) where to find the CA certificate inside the container
       - AWS_CA_BUNDLE=/app/ca-bundle.crt
-      
-    # Define all the volumes to mount from the host into the container
+
+    # Set the working directory inside the container
+    working_dir: /app
+
+    # Define all the volumes to be mounted
     volumes:
       # Mount the current project directory to /app
       - .:/app
-      # Mount a local cache directory to persist downloads
+      # Mount the cache directory
       - ./.cache:/app/.cache
-      # Mount the host's passwd and group files to resolve user identity (read-only)
+      # Mount the annotations file (read-only)
+      # The host path is read from the config.env file
+      - ${ANNOTATIONS_FILE_PATH}:${ANNOTATIONS_FILE_IN_CONTAINER}:ro
+      # Mount the CA certificate (read-only)
+      - ${S3_CA_BUNDLE_PATH}:/app/ca-bundle.crt:ro
+      # Mount user/group files for correct user mapping
       - /etc/passwd:/etc/passwd:ro
       - /etc/group:/etc/group:ro
-      # Mount the annotations file (defined in .env) into the container (read-only)
-      - ${ANNOTATIONS_FILE_PATH}:/app/annotations.json:ro
-      # Mount the CA certificate (defined in .env) into the container (read-only)
-      - ${S3_CA_BUNDLE_PATH}:/app/ca-bundle.crt:ro
-      
-    # GPU Configuration
+
+    # This section is for GPU access
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              # Use the device UUID from the .env file
-              device_ids: ['${MIG_DEVICE_UUID}']
               capabilities: [gpu]
-Step 3: How to Use the New Setup
+              # The MIG device ID is read from the config.env file
+              device_ids: ['${MIG_DEVICE_UUID}']
 
-Your workflow is now much simpler. You no longer need the run_temp.sh script.
+    # The command to execute when the container starts
+    command: python3 finetune_lora.py
+Step 5: How to Use It
 
-1. One-Time User Setup (In your terminal)
+Your workflow is now much simpler.
 
-Before you run Docker Compose for the first time, you need to export your User ID and Group ID so the container can use them. This ensures that any files created by the container have the correct ownership.
+Fill in your configuration:
+
+Open secrets.env and add your S3 keys.
+
+Open config.env and fill in your S3 URL, region, MIG device UUID, and the absolute paths to your CA certificate and annotations JSON file.
+
+Run from your terminal:
+
+First, export your current user and group ID so Docker Compose can use them. This is the crucial step for permissions.
 
 code
 Bash
@@ -117,44 +166,46 @@ expand_less
 export UID=$(id -u)
 export GID=$(id -g)
 
-You only need to do this once per terminal session. You can also add this line to your shell's startup file (like ~/.bashrc or ~/.zshrc) to make it permanent.
-
-2. Start the Fine-Tuning Job
-
-To start the container in the background (detached mode), run:
+Then, start the container in detached (background) mode:
 
 code
 Bash
 download
 content_copy
 expand_less
-docker compose up -d
+docker-compose up -d
 
-Docker Compose will automatically read your .env file, configure the container, and start the python3 finetune_lora.py command.
+Monitor the progress:
 
-3. Monitor the Logs
-
-To see the output of your fine-tuning script in real-time, run:
+To see the logs of your training job, just run:
 
 code
 Bash
 download
 content_copy
 expand_less
-docker compose logs -f
+docker-compose logs -f
 
-Press Ctrl+C to stop viewing the logs without stopping the container.
+Stop and clean up:
 
-4. Stop and Clean Up
-
-Once your training is complete, or if you want to stop it, run:
+When the training is done (or if you want to stop it), you can stop and remove the container with a single command:
 
 code
 Bash
 download
 content_copy
 expand_less
-docker compose down```
-This command gracefully stops and removes the container and any networks created. Your data in the `./.cache` and `./new_whisper_vietbud500_adapter_from_s3` directories will remain since they are on your host machine.
+docker-compose down
+Breakdown of the docker-compose.yml
 
-This Docker Compose setup provides a clean, declarative, and industry-standard way to manage your application, making it much easier to run and share your project.
+services:: Defines the different containers in your application. We only have one, which we've named finetuner.
+
+user: "${UID}:${GID}": This is the solution for permissions. It tells the container to run processes as the user who ran the docker-compose command, ensuring that any files created in mounted volumes (like your saved model adapter) will be owned by you, not root.
+
+env_file:: A list of files from which to load environment variables. This keeps your main Compose file clean.
+
+volumes:: This section maps directories and files from your host machine into the container. The :ro flag means "read-only," which is a good security practice for files that the container shouldn't modify (like your annotations and certs).
+
+deploy:: This is the modern way to request resources like GPUs in Docker Compose. It's more structured than the old --gpus flag.
+
+command:: Specifies the default command to run when the container starts, overriding any CMD in the Dockerfile.

@@ -1,1 +1,15 @@
-UID=$(id -u) GID=$(id -g) docker-compose up -d
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ UID=$(id -u) GID=$(id -g) docker-compose up -d
+-bash: UID: readonly variable
+WARNING: The ANNOTATIONS_FILE_PATH variable is not set. Defaulting to a blank string.
+WARNING: The ANNOTATIONS_FILE_IN_CONTAINER variable is not set. Defaulting to a blank string.
+WARNING: The S3_CA_BUNDLE_PATH variable is not set. Defaulting to a blank string.
+WARNING: The BASE_MODEL_PATH_HOST variable is not set. Defaulting to a blank string.
+WARNING: The OLD_ADAPTER_PATH_HOST variable is not set. Defaulting to a blank string.
+WARNING: The MIG_DEVICE_UUID variable is not set. Defaulting to a blank string.
+Creating network "finetunning_20251031_default" with the default driver
+Creating lora-finetuning-job-s3 ... error
+
+ERROR: for lora-finetuning-job-s3  Cannot create container for service finetuner: create .: volume name is too short, names should be at least two alphanumeric characters
+
+ERROR: for finetuner  Cannot create container for service finetuner: create .: volume name is too short, names should be at least two alphanumeric characters
+ERROR: Encountered errors while bringing up the project.

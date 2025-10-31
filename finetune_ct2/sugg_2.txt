@@ -1,48 +1,128 @@
+import os
+import logging
+from dataclasses import dataclass
 
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
-lora-finetuning-job-s3  | 2025-10-31 10:12:31,378 - INFO - Pre-processed data already found on disk. Skipping data preparation.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
-lora-finetuning-job-s3  | 2025-10-31 10:12:37,083 - INFO - Loading pre-processed training data from /app/processed_data/train...
-lora-finetuning-job-s3  | 2025-10-31 10:12:37,092 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
-lora-finetuning-job-s3  | 2025-10-31 10:12:37,094 - INFO - Datasets loaded successfully.
-lora-finetuning-job-s3  | 2025-10-31 10:12:37,094 - INFO - Loading base model and applying LoRA adapter...
-lora-finetuning-job-s3  | 2025-10-31 10:12:37,372 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
-lora-finetuning-job-s3  | 2025-10-31 10:12:38,430 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
-lora-finetuning-job-s3  | 2025-10-31 10:12:38,511 - INFO - Starting model training...
-lora-finetuning-job-s3  | trainable params: 11,962,880 || all params: 815,431,680 || trainable%: 1.4671
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 128, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 118, in main
-lora-finetuning-job-s3  |     trainer.train()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2245, in train
-lora-finetuning-job-s3  |     return inner_training_loop(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2514, in _inner_training_loop
-lora-finetuning-job-s3  |     batch_samples, num_items_in_batch = self.get_batch_samples(epoch_iterator, num_batches, args.device)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 5243, in get_batch_samples
-lora-finetuning-job-s3  |     batch_samples.append(next(epoch_iterator))
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/data_loader.py", line 566, in __iter__
-lora-finetuning-job-s3  |     current_batch = next(dataloader_iter)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/dataloader.py", line 733, in __next__
-lora-finetuning-job-s3  |     data = self._next_data()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/dataloader.py", line 1515, in _next_data
-lora-finetuning-job-s3  |     return self._process_data(data, worker_id)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/dataloader.py", line 1550, in _process_data
-lora-finetuning-job-s3  |     data.reraise()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/_utils.py", line 750, in reraise
-lora-finetuning-job-s3  |     raise exception
-lora-finetuning-job-s3  | NameError: Caught NameError in DataLoader worker process 0.
-lora-finetuning-job-s3  | Original Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
-lora-finetuning-job-s3  |     data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
-lora-finetuning-job-s3  |     return self.collate_fn(data)
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 40, in __call__
-lora-finetuning-job-s3  |     if (labels[:, 0] == processor.tokenizer.bos_token_id).all().cpu().item():
-lora-finetuning-job-s3  | NameError: name 'processor' is not defined
-lora-finetuning-job-s3  |
+import torch
+import numpy as np
+from datasets import load_from_disk
+from transformers import (
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
+    Seq2SeqTrainingArguments,
+    Seq2SeqTrainer,
+    utils,
+)
+from peft import PeftModel, prepare_model_for_kbit_training
+import jiwer
+
+# --- Basic Setup ---
+utils.logging.set_verbosity_error()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- Configuration Paths ---
+BASE_MODEL_PATH = "/app/model"
+ADAPTER_TO_CONTINUE_FROM = "/app/my-whisper-medium-lora"
+NEW_ADAPTER_SAVE_PATH = "/app/outputs/vietbud500_adapter_final"
+# The input directories for our cached, processed data
+PROCESSED_TRAIN_PATH = "/app/processed_data/train"
+PROCESSED_VAL_PATH = "/app/processed_data/validation"
+
+# --- Data Collator and Metrics (No changes needed) ---
+@dataclass
+class DataCollatorSpeechSeq2SeqWithPadding:
+    processor: WhisperProcessor
+    def __call__(self, features):
+        input_features = [{"input_features": feature["input_features"]} for feature in features]
+        label_features = [{"input_ids": feature["labels"]} for feature in features]
+        batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
+        labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
+        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
+        if (labels[:, 0] == processor.tokenizer.bos_token_id).all().cpu().item():
+            labels = labels[:, 1:]
+        batch["labels"] = labels
+        return batch
+
+def compute_metrics(pred):
+    pred_ids = pred.predictions[0] if isinstance(pred.predictions, tuple) else pred.predictions
+    label_ids = pred.label_ids
+    label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
+    pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
+    label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
+    wer = jiwer.wer(label_str, pred_str)
+    return {"wer": wer}
+
+def main():
+    # 1. Load Processor
+    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+
+    # 2. Load Pre-processed Datasets from Disk (This is super fast!)
+    logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
+    train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
+    logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
+    val_dataset = load_from_disk(PROCESSED_VAL_PATH)
+    logging.info("Datasets loaded successfully.")
+
+    # 3. Model Loading and Hybrid Fine-Tuning Setup
+    logging.info("Loading base model and applying LoRA adapter...")
+    model = WhisperForConditionalGeneration.from_pretrained(
+        BASE_MODEL_PATH, device_map="auto", use_cache=False, torch_dtype=torch.bfloat16
+    )
+    model.config.forced_decoder_ids = None
+    model.config.suppress_tokens = []
+    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
+    model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
+
+    logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
+    for name, param in model.model.model.encoder.named_parameters():
+        if "conv" in name:
+            param.requires_grad = True
+    model.print_trainable_parameters()
+
+    # 4. Training Arguments
+    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
+    has_bf16 = torch.cuda.is_bf16_supported()
+    training_args = Seq2SeqTrainingArguments(
+        output_dir=NEW_ADAPTER_SAVE_PATH,
+        per_device_train_batch_size=16,
+        gradient_accumulation_steps=4,
+        learning_rate=5e-6,
+        warmup_steps=50,
+        num_train_epochs=5,
+        bf16=has_bf16,
+        fp16=not has_bf16,
+        optim="adamw_torch",
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=2,
+        logging_steps=10,
+        report_to=["tensorboard"],
+        load_best_model_at_end=True,
+        metric_for_best_model="wer",
+        greater_is_better=False,
+        dataloader_num_workers=4,
+        generation_max_length=448,
+    )
+
+    # 5. Initialize and Run Trainer
+    trainer = Seq2SeqTrainer(
+        args=training_args,
+        model=model,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        data_collator=data_collator,
+        compute_metrics=compute_metrics,
+        processing_class=processor,
+    )
+
+    logging.info("Starting model training...")
+    trainer.train()
+
+    logging.info("Final evaluation on the best model:")
+    final_metrics = trainer.evaluate()
+    logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
+
+    logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
+    trainer.save_model()
+
+if __name__ == "__main__":
+    main()

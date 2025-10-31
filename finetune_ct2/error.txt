@@ -1,0 +1,36 @@
+
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose up -d
+Creating network "finetunning_20251031_default" with the default driver
+Creating lora-finetuning-job-s3 ... done
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ docker compose logs -f
+WARN[0000] The "HOST_UID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "HOST_GID" variable is not set. Defaulting to a blank string.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | ==========
+lora-finetuning-job-s3  | == CUDA ==
+lora-finetuning-job-s3  | ==========
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | CUDA Version 12.0.1
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
+lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | 2025-10-31 08:45:25,903 - ERROR - Failed to create or verify S3 client: An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
+lora-finetuning-job-s3  | Traceback (most recent call last):
+lora-finetuning-job-s3  |   File "/app/finetune_hybrid.py", line 53, in <module>
+lora-finetuning-job-s3  |     s3_client = get_s3_client()
+lora-finetuning-job-s3  |   File "/app/finetune_hybrid.py", line 46, in get_s3_client
+lora-finetuning-job-s3  |     s3_client.list_buckets()
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/botocore/client.py", line 602, in _api_call
+lora-finetuning-job-s3  |     return self._make_api_call(operation_name, kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/botocore/context.py", line 123, in wrapper
+lora-finetuning-job-s3  |     return func(*args, **kwargs)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/botocore/client.py", line 1078, in _make_api_call
+lora-finetuning-job-s3  |     raise error_class(parsed_response, operation_name)
+lora-finetuning-job-s3  | botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ ^C

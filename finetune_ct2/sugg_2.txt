@@ -1,40 +1,48 @@
 
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  | == CUDA ==
-lora-finetuning-job-s3  | ==========
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | CUDA Version 12.0.1
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
-lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
-lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
-lora-finetuning-job-s3  |
 lora-finetuning-job-s3  | =========================================
 lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
 lora-finetuning-job-s3  | =========================================
 lora-finetuning-job-s3  |
 lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
-lora-finetuning-job-s3  | 2025-10-31 10:07:06,136 - INFO - Pre-processed data already found on disk. Skipping data preparation.
+lora-finetuning-job-s3  | 2025-10-31 10:12:31,378 - INFO - Pre-processed data already found on disk. Skipping data preparation.
 lora-finetuning-job-s3  |
 lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
-lora-finetuning-job-s3  | 2025-10-31 10:07:11,696 - INFO - Loading pre-processed training data from /app/processed_data/train...
-lora-finetuning-job-s3  | 2025-10-31 10:07:11,705 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
-lora-finetuning-job-s3  | 2025-10-31 10:07:11,707 - INFO - Datasets loaded successfully.
-lora-finetuning-job-s3  | 2025-10-31 10:07:11,707 - INFO - Loading base model and applying LoRA adapter...
-lora-finetuning-job-s3  | 2025-10-31 10:07:11,979 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
-lora-finetuning-job-s3  | 2025-10-31 10:07:13,042 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
+lora-finetuning-job-s3  | 2025-10-31 10:12:37,083 - INFO - Loading pre-processed training data from /app/processed_data/train...
+lora-finetuning-job-s3  | 2025-10-31 10:12:37,092 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
+lora-finetuning-job-s3  | 2025-10-31 10:12:37,094 - INFO - Datasets loaded successfully.
+lora-finetuning-job-s3  | 2025-10-31 10:12:37,094 - INFO - Loading base model and applying LoRA adapter...
+lora-finetuning-job-s3  | 2025-10-31 10:12:37,372 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+lora-finetuning-job-s3  | 2025-10-31 10:12:38,430 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
+lora-finetuning-job-s3  | 2025-10-31 10:12:38,511 - INFO - Starting model training...
+lora-finetuning-job-s3  | trainable params: 11,962,880 || all params: 815,431,680 || trainable%: 1.4671
 lora-finetuning-job-s3  | Traceback (most recent call last):
 lora-finetuning-job-s3  |   File "/app/train_model.py", line 128, in <module>
-lora-finetuning-job-s3  | trainable params: 11,962,880 || all params: 815,431,680 || trainable%: 1.4671
 lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 107, in main
-lora-finetuning-job-s3  |     trainer = Seq2SeqTrainer(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
-lora-finetuning-job-s3  |     return func(*args, **kwargs)
-lora-finetuning-job-s3  | TypeError: Seq2SeqTrainer.__init__() got an unexpected keyword argument 'processor'
-lora-finetuning-job-s3 exited with code 1
+lora-finetuning-job-s3  |   File "/app/train_model.py", line 118, in main
+lora-finetuning-job-s3  |     trainer.train()
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2245, in train
+lora-finetuning-job-s3  |     return inner_training_loop(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2514, in _inner_training_loop
+lora-finetuning-job-s3  |     batch_samples, num_items_in_batch = self.get_batch_samples(epoch_iterator, num_batches, args.device)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 5243, in get_batch_samples
+lora-finetuning-job-s3  |     batch_samples.append(next(epoch_iterator))
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/accelerate/data_loader.py", line 566, in __iter__
+lora-finetuning-job-s3  |     current_batch = next(dataloader_iter)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/dataloader.py", line 733, in __next__
+lora-finetuning-job-s3  |     data = self._next_data()
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/dataloader.py", line 1515, in _next_data
+lora-finetuning-job-s3  |     return self._process_data(data, worker_id)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/dataloader.py", line 1550, in _process_data
+lora-finetuning-job-s3  |     data.reraise()
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/_utils.py", line 750, in reraise
+lora-finetuning-job-s3  |     raise exception
+lora-finetuning-job-s3  | NameError: Caught NameError in DataLoader worker process 0.
+lora-finetuning-job-s3  | Original Traceback (most recent call last):
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+lora-finetuning-job-s3  |     data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+lora-finetuning-job-s3  |     return self.collate_fn(data)
+lora-finetuning-job-s3  |   File "/app/train_model.py", line 40, in __call__
+lora-finetuning-job-s3  |     if (labels[:, 0] == processor.tokenizer.bos_token_id).all().cpu().item():
+lora-finetuning-job-s3  | NameError: name 'processor' is not defined
+lora-finetuning-job-s3  |

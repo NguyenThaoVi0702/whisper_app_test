@@ -1,15 +1,128 @@
-ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ UID=$(id -u) GID=$(id -g) docker-compose up -d
--bash: UID: readonly variable
-WARNING: The ANNOTATIONS_FILE_PATH variable is not set. Defaulting to a blank string.
-WARNING: The ANNOTATIONS_FILE_IN_CONTAINER variable is not set. Defaulting to a blank string.
-WARNING: The S3_CA_BUNDLE_PATH variable is not set. Defaulting to a blank string.
-WARNING: The BASE_MODEL_PATH_HOST variable is not set. Defaulting to a blank string.
-WARNING: The OLD_ADAPTER_PATH_HOST variable is not set. Defaulting to a blank string.
-WARNING: The MIG_DEVICE_UUID variable is not set. Defaulting to a blank string.
-Creating network "finetunning_20251031_default" with the default driver
-Creating lora-finetuning-job-s3 ... error
+You've hit on a couple of very subtle but important details about how Docker Compose works. The error messages you're seeing are extremely informative, and I can guide you through the exact fix.
 
-ERROR: for lora-finetuning-job-s3  Cannot create container for service finetuner: create .: volume name is too short, names should be at least two alphanumeric characters
+Let's break down the problems and solve them one by one.
 
-ERROR: for finetuner  Cannot create container for service finetuner: create .: volume name is too short, names should be at least two alphanumeric characters
-ERROR: Encountered errors while bringing up the project.
+The Diagnosis: Two Core Problems
+
+You are facing two distinct issues that are causing the failure:
+
+The UID Read-Only Variable: Your system shell is very strict and has locked the UID variable. Even prepending it to the command isn't working. This is the first and most immediate error: -bash: UID: readonly variable.
+
+How Docker Compose Uses .env Files: This is the critical, subtle point. The env_file directive in your docker-compose.yml only loads variables into the container's environment. It does not use them to substitute variables like ${ANNOTATIONS_FILE_PATH} inside the docker-compose.yml file itself.
+
+Because of Problem #2, Docker Compose doesn't know what ${ANNOTATIONS_FILE_PATH} is when it tries to set up the volume. It sees a blank string, resulting in the error: create .: volume name is too short.
+
+The Complete Solution
+
+We will fix this by making two main changes:
+
+We will use different variable names for the user/group ID to bypass the "read-only" error.
+
+We will use the standard Docker Compose method for variable substitution, which is to use a single, default .env file. This is the simplest and most common approach.
+
+Step 1: Combine Your Environment Files into .env
+
+Docker Compose automatically looks for and loads a file named exactly .env in the project directory for variable substitution. This is the behavior we want.
+
+Rename config.env to .env.
+
+Copy the contents of secrets.env into the new .env file.
+
+Your new, single .env file should look like this:
+
+.env
+code
+Ini
+download
+content_copy
+expand_less
+# --- S3 Configuration ---
+S3_ENDPOINT_URL=YOUR_S3_URL_ENDPOINT
+AWS_REGION=YOUR_BUCKET_REGION
+AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
+
+# --- GPU Configuration ---
+MIG_DEVICE_UUID=MIG-GPU-a45fc4b1-c85e-5a3b-8b3d-79191377ec06/4/0
+
+# --- Host File Paths (Use absolute paths) ---
+S3_CA_BUNDLE_PATH=/path/on/host/to/your_ca_bundle.crt
+ANNOTATIONS_FILE_PATH=/path/on/host/to/your_annotations.json
+
+# --- Container File Paths ---
+ANNOTATIONS_FILE_IN_CONTAINER=/app/annotations.json
+
+Remember to add .env to your .gitignore file!
+
+Step 2: Update the docker-compose.yml File
+
+We will make two small but crucial changes here:
+
+Change user: "${UID}:${GID}" to user: "${HOST_UID}:${HOST_GID}" to use our new, non-restricted variable names.
+
+Remove the env_file directive, as Docker Compose will now automatically load the .env file.
+
+Final, Corrected docker-compose.yml
+code
+Yaml
+download
+content_copy
+expand_less
+version: '3.8'
+
+services:
+  finetuner:
+    image: finetune_whisper_lora:v3
+    container_name: lora-finetuning-job-s3
+
+    ### MODIFIED ###
+    # Use different variable names to avoid the "read-only" shell error.
+    user: "${HOST_UID}:${HOST_GID}"
+
+    ### REMOVED ###
+    # The 'env_file' directive is removed. Docker Compose automatically
+    # loads the '.env' file for variable substitution and injection.
+
+    environment:
+      - HF_HOME=/app/.cache/huggingface
+      - TORCH_HOME=/app/.cache/torch
+      - AWS_CA_BUNDLE=/app/ca-bundle.crt
+
+    working_dir: /app
+
+    volumes:
+      - .:/app
+      - ./.cache:/app/.cache
+      - ${ANNOTATIONS_FILE_PATH}:${ANNOTATIONS_FILE_IN_CONTAINER}:ro
+      - ${S3_CA_BUNDLE_PATH}:/app/ca-bundle.crt:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - ./outputs:/app/outputs
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ['${MIG_DEVICE_UUID}']
+
+    command: python3 finetune_lora.py
+Step 3: The New, Corrected Command to Run
+
+Now, you will use HOST_UID and HOST_GID when you run the command. Because these are not standard system variables, they will not be read-only.
+
+code
+Bash
+download
+content_copy
+expand_less
+# This command will now work correctly
+HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose up -d
+Summary of Why This Works
+
+Bypassing Read-Only Error: By using HOST_UID and HOST_GID, we are defining our own temporary variables that your strict shell environment doesn't protect, solving the first error.
+
+Correctly Loading Variables: By renaming our configuration file to .env, we are using Docker Compose's built-in, automatic mechanism. It reads this file before parsing the docker-compose.yml, so it knows what ${ANNOTATIONS_FILE_PATH} and the other variables are, which solves all the "variable is not set" warnings and the final "volume name is too short" error.
+
+Your workflow is now more standard and should execute without errors.

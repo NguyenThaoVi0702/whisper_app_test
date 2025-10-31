@@ -1,46 +1,14 @@
-Absolutely. Using Docker Compose is an excellent way to manage this setup. It's a declarative, reproducible, and much cleaner approach than a long docker run command in a shell script.
+Of course. You're right, this is a crucial step. The container needs access to the base model and the adapter you're continuing to train from.
 
-I will provide a complete solution that:
+We will achieve this by adding two new path variables to your config.env file and then adding two corresponding volume mounts to your docker-compose.yml. This keeps the configuration clean and consistent with the existing setup.
 
-Uses a docker-compose.yml file to define the service.
+Here are the updated files and a detailed explanation.
 
-Uses two separate environment files: secrets.env for your S3 credentials and config.env for non-sensitive configuration, as you requested.
+Step 1: Update Your config.env File
 
-Correctly handles the User ID (UID) and Group ID (GID) to avoid permission issues with your mounted files.
+Add the paths for your model and adapter directories on the host machine to the config.env file.
 
-Step 1: Directory Structure
-
-Organize your project files like this. This structure keeps everything clean and separate.
-
-code
-Code
-download
-content_copy
-expand_less
-.
-├── docker-compose.yml
-├── secrets.env         <-- S3 secrets go here
-├── config.env          <-- Non-secret paths and settings go here
-├── your_annotations.json
-├── .gitignore
-└── your_ca_bundle.crt  <-- Your CA certificate file
-Step 2: Create the Environment Files
-A) secrets.env (For S3 Credentials)
-
-Create this file and add your sensitive credentials. This file should be kept private and never committed to Git.
-
-code
-Ini
-download
-content_copy
-expand_less
-# S3 Secret Credentials
-# This file should be listed in .gitignore
-AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
-AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
-B) config.env (For Non-Secret Configuration)
-
-Create this file for all other configuration. This makes your docker-compose.yml file cleaner and more reusable.
+Remember to use full, absolute paths to prevent any ambiguity.
 
 code
 Ini
@@ -60,31 +28,19 @@ MIG_DEVICE_UUID=MIG-GPU-a45fc4b1-c85e-5a3b-8b3d-79191377ec06/4/0
 S3_CA_BUNDLE_PATH=/path/on/host/to/your_ca_bundle.crt
 ANNOTATIONS_FILE_PATH=/path/on/host/to/your_annotations.json
 
+### NEW ###
+# --- Model and Adapter Host Paths ---
+BASE_MODEL_PATH_HOST=/path/on/host/to/your/model
+OLD_ADAPTER_PATH_HOST=/path/on/host/to/your/my-whisper-medium-lora
+### END NEW ###
+
 # --- Container File Paths ---
 ANNOTATIONS_FILE_IN_CONTAINER=/app/annotations.json
+Step 2: Update the docker-compose.yml File
 
-Important: Replace the /path/on/host/to/... with the full, absolute paths to those files on your machine.
+Now, we'll add two new lines to the volumes section of your Docker Compose file. These lines will use the variables you just defined in config.env to mount the directories into the container as read-only.
 
-Step 3: Create the .gitignore File
-
-Ensure you have a .gitignore file with the following content to prevent committing secrets and cache files.
-
-code
-Code
-download
-content_copy
-expand_less
-# Ignore environment files containing secrets
-secrets.env
-
-# Ignore python cache
-__pycache__/
-
-# Ignore cache directories
-.cache/
-Step 4: Create the docker-compose.yml File
-
-This is the core of the solution. It declaratively defines everything your run_temp.sh script was doing.
+Here is the complete, updated docker-compose.yml file:
 
 code
 Yaml
@@ -132,6 +88,14 @@ services:
       - /etc/passwd:/etc/passwd:ro
       - /etc/group:/etc/group:ro
 
+      ### NEW ###
+      # --- Mount the base model and old adapter (read-only) ---
+      # The script looks for './model' and './my-whisper-medium-lora' inside the container.
+      # Since the working directory is /app, we map our host folders to these locations.
+      - ${BASE_MODEL_PATH_HOST}:/app/model:ro
+      - ${OLD_ADAPTER_PATH_HOST}:/app/my-whisper-medium-lora:ro
+      ### END NEW ###
+
     # This section is for GPU access
     deploy:
       resources:
@@ -144,19 +108,41 @@ services:
 
     # The command to execute when the container starts
     command: python3 finetune_lora.py
-Step 5: How to Use It
+Explanation of the Changes
 
-Your workflow is now much simpler.
+config.env Additions:
 
-Fill in your configuration:
+BASE_MODEL_PATH_HOST: This variable holds the absolute path to your base Whisper model directory on your local machine.
 
-Open secrets.env and add your S3 keys.
+OLD_ADAPTER_PATH_HOST: This variable holds the absolute path to the LoRA adapter you are continuing to train from.
 
-Open config.env and fill in your S3 URL, region, MIG device UUID, and the absolute paths to your CA certificate and annotations JSON file.
+docker-compose.yml Additions:
 
-Run from your terminal:
+- ${BASE_MODEL_PATH_HOST}:/app/model:ro: This line mounts your base model directory from the host into the /app/model directory inside the container.
 
-First, export your current user and group ID so Docker Compose can use them. This is the crucial step for permissions.
+- ${OLD_ADAPTER_PATH_HOST}:/app/my-whisper-medium-lora:ro: This line mounts your old adapter directory from the host into /app/my-whisper-medium-lora inside the container.
+
+Why the Container Paths /app/model?
+
+Your finetune_lora.py script uses relative paths to load the models: BASE_MODEL_PATH = "./model" and ADAPTER_TO_CONTINUE_FROM = "./my-whisper-medium-lora".
+
+Since the working_dir in our Compose file is /app, the script will interpret ./model as /app/model.
+
+By mounting your host folders to these specific container paths, the script will find the files exactly where it expects them.
+
+Why :ro (Read-Only)?
+
+The fine-tuning script only needs to read from these two directories. It will never (and should never) modify them.
+
+Mounting them as ro (read-only) is a security best practice that prevents the container from accidentally corrupting your base model or original adapter files.
+
+How to Use
+
+Your workflow remains the same and just as simple:
+
+Update config.env with the new absolute paths for your model and adapter.
+
+Export your User and Group IDs in the terminal:
 
 code
 Bash
@@ -166,7 +152,7 @@ expand_less
 export UID=$(id -u)
 export GID=$(id -g)
 
-Then, start the container in detached (background) mode:
+Run Docker Compose:
 
 code
 Bash
@@ -175,9 +161,7 @@ content_copy
 expand_less
 docker-compose up -d
 
-Monitor the progress:
-
-To see the logs of your training job, just run:
+Monitor logs:
 
 code
 Bash
@@ -186,9 +170,7 @@ content_copy
 expand_less
 docker-compose logs -f
 
-Stop and clean up:
-
-When the training is done (or if you want to stop it), you can stop and remove the container with a single command:
+Stop and clean up when done:
 
 code
 Bash
@@ -196,16 +178,3 @@ download
 content_copy
 expand_less
 docker-compose down
-Breakdown of the docker-compose.yml
-
-services:: Defines the different containers in your application. We only have one, which we've named finetuner.
-
-user: "${UID}:${GID}": This is the solution for permissions. It tells the container to run processes as the user who ran the docker-compose command, ensuring that any files created in mounted volumes (like your saved model adapter) will be owned by you, not root.
-
-env_file:: A list of files from which to load environment variables. This keeps your main Compose file clean.
-
-volumes:: This section maps directories and files from your host machine into the container. The :ro flag means "read-only," which is a good security practice for files that the container shouldn't modify (like your annotations and certs).
-
-deploy:: This is the modern way to request resources like GPUs in Docker Compose. It's more structured than the old --gpus flag.
-
-command:: Specifies the default command to run when the container starts, overriding any CMD in the Dockerfile.

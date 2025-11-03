@@ -1,3 +1,10 @@
+
+docker compose run --rm \
+  -v "$(pwd)/my_test_audio.wav:/app/test.wav:ro" \
+  finetuner python compare_models.py /app/test.wav
+
+++++++++++++++++++++++++
+
 # compare_models.py
 
 import os

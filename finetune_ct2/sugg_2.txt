@@ -1,22 +1,109 @@
-output_dir=NEW_ADAPTER_SAVE_PATH,
-        per_device_train_batch_size=4,  
-        gradient_accumulation_steps=16, 
-        learning_rate=1e-4,
-        warmup_steps=100,
-        num_train_epochs=15,
-        lr_scheduler_type="linear",
-        bf16=has_bf16,
-        fp16=not has_bf16,
-        optim="adamw_torch",
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        save_total_limit=2,
-        logging_steps=10,
-        report_to=["tensorboard"],
-        load_best_model_at_end=True,
-        metric_for_best_model="wer",
-        greater_is_better=False,
-        predict_with_generate=True,
-        dataloader_num_workers=4,
-        dataloader_pin_memory=False,
-        generation_max_length=448,
+# compare_models.py
+
+import os
+import logging
+import argparse
+
+import torch
+import librosa
+from transformers import WhisperProcessor, WhisperForConditionalGeneration
+from peft import PeftModel
+
+# --- Basic Setup ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Suppress noisy warnings from transformers
+logging.getLogger("transformers").setLevel(logging.ERROR)
+
+# --- Configuration Paths (Must match your training script) ---
+BASE_MODEL_PATH = "/app/model"
+FINETUNED_ADAPTER_PATH = "/app/outputs/vietbud500_adapter_final" # Path to your newly trained adapter
+
+def transcribe_audio(model, processor, audio_path, device, model_dtype):
+    """
+    Loads an audio file, processes it, and returns the model's transcription.
+    """
+    try:
+        # 1. Load and process the audio file
+        logging.info(f"Loading audio from: {audio_path}")
+        audio_array, sampling_rate = librosa.load(audio_path, sr=16000, mono=True)
+        
+        # 2. Extract input features
+        input_features = processor(
+            audio_array,
+            sampling_rate=sampling_rate,
+            return_tensors="pt"
+        ).input_features
+        
+        # 3. Generate token ids
+        logging.info("Generating transcription...")
+        # Ensure input tensor is on the correct device and has the correct dtype
+        predicted_ids = model.generate(input_features.to(device, dtype=model_dtype))
+        
+        # 4. Decode token ids to text
+        transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+        return transcription
+
+    except Exception as e:
+        logging.error(f"Failed to transcribe audio file: {e}", exc_info=True)
+        return "ERROR: Could not transcribe audio."
+
+def main(audio_file_path):
+    """
+    Loads both base and fine-tuned models and compares their transcriptions
+    for a given audio file.
+    """
+    if not os.path.exists(audio_file_path):
+        raise FileNotFoundError(f"The provided audio file was not found inside the container at: {audio_file_path}")
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model_dtype = torch.bfloat16 # Use the same dtype as in your training
+    logging.info(f"Using device: {device} with dtype: {model_dtype}")
+
+    # --- Load Processor ---
+    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+
+    # --- 1. Load Base Model ---
+    logging.info("Loading base Whisper model...")
+    base_model = WhisperForConditionalGeneration.from_pretrained(
+        BASE_MODEL_PATH,
+        torch_dtype=model_dtype
+    ).to(device)
+    base_model.eval()
+
+    # --- 2. Load Fine-Tuned Model ---
+    logging.info(f"Loading fine-tuned adapter from: {FINETUNED_ADAPTER_PATH}")
+    # The fine-tuned model is the base model + the LoRA adapter layers
+    # We use the PEFT library to merge them
+    fine_tuned_model = PeftModel.from_pretrained(base_model, FINETUNED_ADAPTER_PATH).to(device)
+    fine_tuned_model.eval()
+
+    # --- 3. Run Inference and Compare ---
+    print("\n" + "="*80)
+    print("Transcribing with BASE model...")
+    print("="*80)
+    base_transcription = transcribe_audio(base_model, processor, audio_file_path, device, model_dtype)
+
+    print("\n" + "="*80)
+    print("Transcribing with FINE-TUNED model...")
+    print("="*80)
+    finetuned_transcription = transcribe_audio(fine_tuned_model, processor, audio_file_path, device, model_dtype)
+    
+    # --- 4. Display Final Comparison ---
+    print("\n" + "#"*30)
+    print("###   MODEL COMPARISON   ###")
+    print("#"*30)
+    
+    print("\n[BASE MODEL TRANSCRIPTION]:")
+    print(f"    '{base_transcription}'")
+
+    print("\n[FINE-TUNED MODEL TRANSCRIPTION]:")
+    print(f"    '{finetuned_transcription}'")
+    print("\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Compare base and fine-tuned Whisper model transcriptions.")
+    parser.add_argument("audio_file", type=str, help="Path to the audio file to transcribe (must be accessible inside the container).")
+    args = parser.parse_args()
+    
+    main(args.audio_file)

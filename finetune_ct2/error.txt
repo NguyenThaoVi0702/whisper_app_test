@@ -1,24 +1,47 @@
 
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
-lora-finetuning-job-s3  | =========================================
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
-lora-finetuning-job-s3  | 2025-10-31 10:01:58,528 - INFO - Pre-processed data already found on disk. Skipping data preparation.
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
-lora-finetuning-job-s3  | 2025-10-31 10:02:04,071 - INFO - Loading pre-processed training data from /app/processed_data/train...
-lora-finetuning-job-s3  | 2025-10-31 10:02:04,078 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
-lora-finetuning-job-s3  | 2025-10-31 10:02:04,080 - INFO - Datasets loaded successfully.
-lora-finetuning-job-s3  | 2025-10-31 10:02:04,080 - INFO - Loading base model and applying LoRA adapter...
-lora-finetuning-job-s3  | 2025-10-31 10:02:04,400 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
-lora-finetuning-job-s3  | 2025-10-31 10:02:05,462 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 128, in <module>
-lora-finetuning-job-s3  | trainable params: 11,962,880 || all params: 815,431,680 || trainable%: 1.4671
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 84, in main
-lora-finetuning-job-s3  |     training_args = Seq2SeqTrainingArguments(
-lora-finetuning-job-s3  | TypeError: Seq2SeqTrainingArguments.__init__() got an unexpected keyword argument 'evaluation_strategy'
-lora-finetuning-job-s3 exited with code 1
+2025-11-03 03:34:58,517 - INFO - Loading base model and processor...
+2025-11-03 03:35:00,061 - INFO - Model loaded onto device: cuda
+2025-11-03 03:35:00,061 - INFO - Loading processed and raw datasets...
+2025-11-03 03:35:00,093 - INFO - Checking 5 random samples...
+
+================================================================================
+SAMPLE 1/5 (Dataset Index: 323)
+================================================================================
+2025-11-03 03:35:00,286 - INFO - Downloading and transcribing audio from s3://lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/AI Ipay_190.wav...
+2025-11-03 03:35:01,242 - ERROR - An error occurred: Input type (float) and bias type (c10::BFloat16) should be the same
+Traceback (most recent call last):
+  File "/app/check_data.py", line 125, in main
+    predicted_ids = model.generate(input_features.to(device))
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 619, in generate
+    init_tokens = self._retrieve_init_tokens(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 1470, in _retrieve_init_tokens
+    lang_ids = self.detect_language(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 1574, in detect_language
+    logits = self(**inputs, decoder_input_ids=decoder_input_ids, use_cache=False).logits[:, -1]
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1776, in forward
+    outputs = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1627, in forward
+    encoder_outputs = self.encoder(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1029, in forward
+    inputs_embeds = nn.functional.gelu(self.conv1(input_features))
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/conv.py", line 375, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/conv.py", line 370, in _conv_forward
+    return F.conv1d(
+RuntimeError: Input type (float) and bias type (c10::BFloat16) should be the same

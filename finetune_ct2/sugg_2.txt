@@ -19,7 +19,7 @@ logging.getLogger("botocore").setLevel(logging.ERROR)
 
 # --- Configuration Paths ---
 BASE_MODEL_PATH = "/app/model"
-FINETUNED_ADAPTER_PATH = "/app/outputs/vietbud500_adapter_final"
+FINETUNED_ADAPTER_PATH = "/app/outputs/20251103_adapter_final"
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
 
 # --- S3 Client Function ---
@@ -57,11 +57,7 @@ def main(s3_object_key):
     base_model_for_pipeline = WhisperForConditionalGeneration.from_pretrained(
         BASE_MODEL_PATH, torch_dtype=model_dtype
     )
-    
-    ### ================================================================== ###
-    ###   CRITICAL FIX: Create separate 'pipeline' objects for each model.   ###
-    ###   This is the standard way to run long-form transcription.           ###
-    ### ================================================================== ###
+
     
     logging.info("Creating transcription pipeline for BASE model...")
     base_pipeline = pipeline(

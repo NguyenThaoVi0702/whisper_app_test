@@ -1,82 +1,42 @@
-def main():
-    # 1. Load Pre-processed Datasets from Disk
-    logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
-    train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
-    logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
-    val_dataset = load_from_disk(PROCESSED_VAL_PATH)
-    logging.info("Datasets loaded successfully.")
-
-    # 2. Model Loading and Hybrid Fine-Tuning Setup
-    logging.info("Loading base model...")
-    model = WhisperForConditionalGeneration.from_pretrained(
-        BASE_MODEL_PATH, use_cache=False, torch_dtype=torch.bfloat16
-    )
-    
-    ### ================================================================== ###
-    ### CRITICAL FIX: Changed the order of operations.                     ###
-    ### Unfreeze the convolutional layers BEFORE preparing the model       ###
-    ### with PEFT. This allows PEFT to correctly handle the hybrid state.  ###
-    ### ================================================================== ###
-    logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
-    for name, param in model.named_parameters():
-        if 'conv1' in name or 'conv2' in name:
-            param.requires_grad = True
-
-    # Now, prepare the model. PEFT will see that the conv layers are trainable.
-    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
-    
-    logging.info("Applying LoRA adapter...")
-    model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
-            
-    model.print_trainable_parameters()
-
-    # 3. Training Arguments
-    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
-    has_bf16 = torch.cuda.is_bf16_supported()
-    training_args = Seq2SeqTrainingArguments(
-        output_dir=NEW_ADAPTER_SAVE_PATH,
-        # IMPORTANT: A MIG slice has less memory. Be ready to lower batch size.
-        per_device_train_batch_size=8,  # Starting lower as a precaution
-        gradient_accumulation_steps=8, # Increased to keep effective batch size of 64
-        learning_rate=5e-6,
-        warmup_steps=50,
-        num_train_epochs=5,
-        bf16=has_bf16,
-        fp16=not has_bf16,
-        optim="adamw_torch",
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        save_total_limit=2,
-        logging_steps=10,
-        report_to=["tensorboard"],
-        load_best_model_at_end=True,
-        metric_for_best_model="wer",
-        greater_is_better=False,
-        dataloader_num_workers=4,
-        dataloader_pin_memory=False,
-        generation_max_length=448,
-    )
-
-    # 4. Initialize and Run Trainer
-    trainer = Seq2SeqTrainer(
-        args=training_args,
-        model=model,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
-        tokenizer=processor.feature_extractor,
-    )
-    
-    logging.info("Starting model training...")
-    trainer.train()
-
-    logging.info("Final evaluation on the best model:")
-    final_metrics = trainer.evaluate()
-    logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
-
-    logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
-    trainer.save_model()
-
-if __name__ == "__main__":
-    main()
+lora-finetuning-job-s3  | =========================================
+lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
+lora-finetuning-job-s3  | =========================================
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
+lora-finetuning-job-s3  | 2025-11-03 01:40:14,534 - INFO - Pre-processed data already found on disk. Skipping data preparation.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
+lora-finetuning-job-s3  | 2025-11-03 01:40:19,775 - INFO - Loading Whisper processor...
+lora-finetuning-job-s3  | 2025-11-03 01:40:20,144 - INFO - Loading pre-processed training data from /app/processed_data/train...
+lora-finetuning-job-s3  | 2025-11-03 01:40:20,151 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
+lora-finetuning-job-s3  | 2025-11-03 01:40:20,153 - INFO - Datasets loaded successfully.
+lora-finetuning-job-s3  | 2025-11-03 01:40:20,153 - INFO - Loading base model...
+lora-finetuning-job-s3  | 2025-11-03 01:40:20,768 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
+lora-finetuning-job-s3  | 2025-11-03 01:40:20,965 - INFO - Applying LoRA adapter...
+lora-finetuning-job-s3  | /app/train_model.py:120: FutureWarning: `tokenizer` is deprecated and will be removed in version 5.0.0 for `Seq2SeqTrainer.__init__`. Use `processing_class` instead.
+lora-finetuning-job-s3  |   trainer = Seq2SeqTrainer(
+lora-finetuning-job-s3  | 2025-11-03 01:40:22,302 - INFO - Starting model training...
+lora-finetuning-job-s3  | trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
+lora-finetuning-job-s3  | {'eval_runtime': 9.6749, 'eval_samples_per_second': 4.134, 'eval_steps_per_second': 0.517, 'epoch': 0.8888888888888888}
+lora-finetuning-job-s3  | Traceback (most recent call last):
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3165, in _determine_best_metric
+lora-finetuning-job-s3  |     metric_value = metrics[metric_to_check]
+lora-finetuning-job-s3  | KeyError: 'eval_wer'
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | The above exception was the direct cause of the following exception:
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | Traceback (most recent call last):
+lora-finetuning-job-s3  |   File "/app/train_model.py", line 141, in <module>
+lora-finetuning-job-s3  |     main()
+lora-finetuning-job-s3  |   File "/app/train_model.py", line 131, in main
+lora-finetuning-job-s3  |     trainer.train()
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2245, in train
+lora-finetuning-job-s3  |     return inner_training_loop(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2661, in _inner_training_loop
+lora-finetuning-job-s3  |     self._maybe_log_save_evaluate(
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3097, in _maybe_log_save_evaluate
+lora-finetuning-job-s3  |     is_new_best_metric = self._determine_best_metric(metrics=metrics, trial=trial)
+lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3167, in _determine_best_metric
+lora-finetuning-job-s3  |     raise KeyError(
+lora-finetuning-job-s3  | KeyError: "The `metric_for_best_model` training argument is set to 'eval_wer', which is not found in the evaluation metrics. The available evaluation metrics are: ['eval_runtime', 'eval_samples_per_second', 'eval_steps_per_second', 'epoch']. Consider changing the `metric_for_best_model` via the TrainingArguments."
+lora-finetuning-job-s3 exited with code 1

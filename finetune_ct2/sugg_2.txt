@@ -1,14 +1,22 @@
-vietnamese_chars = "a-zàáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữự"
-numbers = "0-9"
-
-def normalize_transcription(text):
-    """
-    Normalizes transcription text by:
-    1. Converting to lowercase.
-    2. Removing all characters except for Vietnamese letters, numbers, and spaces.
-    3. Collapsing multiple spaces into a single space.
-    """
-    text = text.lower()
-    text = re.sub(f'[^{vietnamese_chars}{numbers}\s]', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+output_dir=NEW_ADAPTER_SAVE_PATH,
+        per_device_train_batch_size=4,  
+        gradient_accumulation_steps=16, 
+        learning_rate=1e-4,
+        warmup_steps=100,
+        num_train_epochs=15,
+        lr_scheduler_type="linear",
+        bf16=has_bf16,
+        fp16=not has_bf16,
+        optim="adamw_torch",
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=2,
+        logging_steps=10,
+        report_to=["tensorboard"],
+        load_best_model_at_end=True,
+        metric_for_best_model="wer",
+        greater_is_better=False,
+        predict_with_generate=True,
+        dataloader_num_workers=4,
+        dataloader_pin_memory=False,
+        generation_max_length=448,

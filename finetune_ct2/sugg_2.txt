@@ -1,104 +1,186 @@
+Of course. This is a very practical and powerful way to test your model on a real-world use case.
 
-docker compose run --rm \
-  -v "$(pwd)/my_test_audio.wav:/app/test.wav:ro" \
-  finetuner python compare_models.py /app/test.wav
+This script will perform the following steps:
 
-++++++++++++++++++++++++
+Take a meeting's S3 prefix as an input.
 
-# compare_models.py
+List all audio chunks under that prefix.
+
+Parse the chunk number from each filename and sort them numerically.
+
+Download and concatenate all chunks in the correct order into a single audio stream in memory.
+
+Transcribe this long audio stream using both the base Whisper model and your fine-tuned model.
+
+Display a side-by-side comparison of the results.
+
+1. The New Comparison Script
+
+Save this code into a new file named compare_concatenated.py in your project's root directory.
+
+code
+Python
+download
+content_copy
+expand_less
+# compare_concatenated.py
 
 import os
+import io
 import logging
 import argparse
+import re
 
+import boto3
 import torch
 import librosa
+import numpy as np
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from peft import PeftModel
 
 # --- Basic Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-# Suppress noisy warnings from transformers
 logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("boto3").setLevel(logging.ERROR)
+logging.getLogger("botocore").setLevel(logging.ERROR)
 
-# --- Configuration Paths---
+# --- Configuration Paths ---
 BASE_MODEL_PATH = "/app/model"
-FINETUNED_ADAPTER_PATH = "/app/outputs/20251103_adapter_final" 
+FINETUNED_ADAPTER_PATH = "/app/outputs/vietbud500_adapter_final"
 
-def transcribe_audio(model, processor, audio_path, device, model_dtype):
-    """
-    Loads an audio file, processes it, and returns the model's transcription.
-    """
+def get_s3_client():
+    """Initializes and returns a boto3 S3 client."""
     try:
-        # 1. Load and process the audio file
-        logging.info(f"Loading audio from: {audio_path}")
-        audio_array, sampling_rate = librosa.load(audio_path, sr=16000, mono=True)
-        
-        # 2. Extract input features
+        return boto3.client(
+            "s3",
+            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("AWS_REGION"),
+        )
+    except Exception as e:
+        raise ConnectionError(f"Failed to create S3 client: {e}")
+
+def download_and_concat_chunks_from_s3(s3_client, bucket, prefix):
+    """
+    Lists, sorts, downloads, and concatenates audio chunks from an S3 prefix.
+    """
+    logging.info(f"Listing audio chunks in bucket '{bucket}' with prefix '{prefix}'...")
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    
+    if 'Contents' not in response:
+        logging.error(f"No objects found at the specified prefix. Check bucket and prefix.")
+        return None
+
+    chunks_to_process = []
+    for obj in response['Contents']:
+        key = obj['Key']
+        # Use regex to find the chunk number (e.g., the '12' in 'meeting_12.wav')
+        match = re.search(r'_(\d+)\.wav$', key)
+        if match:
+            # Store the chunk number (as int for sorting) and the S3 key
+            chunk_number = int(match.group(1))
+            chunks_to_process.append((chunk_number, key))
+        else:
+            logging.warning(f"Skipping file with unexpected name format: {key}")
+
+    if not chunks_to_process:
+        logging.error("Found objects, but none matched the naming convention '[name]_[number].wav'.")
+        return None
+
+    # Sort the chunks numerically by their chunk number
+    chunks_to_process.sort(key=lambda x: x[0])
+    
+    logging.info(f"Found and sorted {len(chunks_to_process)} audio chunks. Downloading and concatenating...")
+
+    all_audio_arrays = []
+    for i, (chunk_num, key) in enumerate(chunks_to_process):
+        logging.info(f"  -> Processing chunk {i+1}/{len(chunks_to_process)} (ID: {chunk_num})")
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        audio_bytes = response['Body'].read()
+        audio_array, _ = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+        all_audio_arrays.append(audio_array)
+
+    # Concatenate all numpy arrays into a single long audio stream
+    concatenated_audio = np.concatenate(all_audio_arrays)
+    duration_seconds = len(concatenated_audio) / 16000
+    logging.info(f"Successfully concatenated audio. Total duration: {duration_seconds:.2f} seconds.")
+    
+    return concatenated_audio
+
+def transcribe_audio(model, processor, audio_array, device, model_dtype):
+    """
+    Takes an in-memory audio array and returns the model's transcription.
+    """
+    if audio_array is None:
+        return "ERROR: Audio array is empty."
+    
+    try:
+        logging.info("Extracting input features from audio array...")
         input_features = processor(
             audio_array,
-            sampling_rate=sampling_rate,
+            sampling_rate=16000,
             return_tensors="pt"
         ).input_features
         
-        # 3. Generate token ids
         logging.info("Generating transcription...")
-        # Ensure input tensor is on the correct device and has the correct dtype
         predicted_ids = model.generate(input_features.to(device, dtype=model_dtype))
         
-        # 4. Decode token ids to text
         transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
         return transcription
-
     except Exception as e:
-        logging.error(f"Failed to transcribe audio file: {e}", exc_info=True)
+        logging.error(f"Failed to transcribe audio: {e}", exc_info=True)
         return "ERROR: Could not transcribe audio."
 
-def main(audio_file_path):
+def main(s3_prefix):
     """
-    Loads both base and fine-tuned models and compares their transcriptions
-    for a given audio file.
+    Orchestrates the process of downloading, concatenating, and comparing transcriptions.
     """
-    if not os.path.exists(audio_file_path):
-        raise FileNotFoundError(f"The provided audio file was not found inside the container at: {audio_file_path}")
+    bucket_name = os.environ.get("S3_BUCKET")
+    if not bucket_name:
+        raise ValueError("S3_BUCKET environment variable is not set. Please set it to your bucket name.")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_dtype = torch.bfloat16 # Use the same dtype as in your training
+    model_dtype = torch.bfloat16
     logging.info(f"Using device: {device} with dtype: {model_dtype}")
 
-    # --- Load Processor ---
-    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+    # --- 1. Get Concatenated Audio ---
+    s3_client = get_s3_client()
+    concatenated_audio = download_and_concat_chunks_from_s3(s3_client, bucket_name, s3_prefix)
 
-    # --- 1. Load Base Model ---
+    if concatenated_audio is None:
+        logging.info("Exiting due to audio processing failure.")
+        return
+
+    # --- 2. Load Models and Processor ---
+    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+    
     logging.info("Loading base Whisper model...")
     base_model = WhisperForConditionalGeneration.from_pretrained(
-        BASE_MODEL_PATH,
-        torch_dtype=model_dtype
+        BASE_MODEL_PATH, torch_dtype=model_dtype
     ).to(device)
     base_model.eval()
 
-    # --- 2. Load Fine-Tuned Model ---
     logging.info(f"Loading fine-tuned adapter from: {FINETUNED_ADAPTER_PATH}")
-    # The fine-tuned model is the base model + the LoRA adapter layers
-    # We use the PEFT library to merge them
     fine_tuned_model = PeftModel.from_pretrained(base_model, FINETUNED_ADAPTER_PATH).to(device)
     fine_tuned_model.eval()
 
-    # --- 3. Run Inference and Compare ---
+    # --- 3. Run Inference ---
     print("\n" + "="*80)
     print("Transcribing with BASE model...")
     print("="*80)
-    base_transcription = transcribe_audio(base_model, processor, audio_file_path, device, model_dtype)
+    base_transcription = transcribe_audio(base_model, processor, concatenated_audio, device, model_dtype)
 
     print("\n" + "="*80)
     print("Transcribing with FINE-TUNED model...")
     print("="*80)
-    finetuned_transcription = transcribe_audio(fine_tuned_model, processor, audio_file_path, device, model_dtype)
+    finetuned_transcription = transcribe_audio(fine_tuned_model, processor, concatenated_audio, device, model_dtype)
     
     # --- 4. Display Final Comparison ---
     print("\n" + "#"*30)
     print("###   MODEL COMPARISON   ###")
     print("#"*30)
+    print(f"\nFor S3 Prefix: '{s3_prefix}'")
     
     print("\n[BASE MODEL TRANSCRIPTION]:")
     print(f"    '{base_transcription}'")
@@ -107,10 +189,66 @@ def main(audio_file_path):
     print(f"    '{finetuned_transcription}'")
     print("\n")
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Compare base and fine-tuned Whisper model transcriptions.")
-    parser.add_argument("audio_file", type=str, help="Path to the audio file to transcribe (must be accessible inside the container).")
+    parser = argparse.ArgumentParser(description="Compare transcriptions from base and fine-tuned Whisper models on concatenated S3 audio chunks.")
+    parser.add_argument("s3_prefix", type=str, help="The S3 prefix for the meeting audio chunks (e.g., 'meeting-audio/meeting-to/MyMeetingName'). Do not include the bucket name.")
     args = parser.parse_args()
     
-    main(args.audio_file)
+    main(args.s3_prefix)
+2. How to Run the Script
+
+This script requires two pieces of information: the S3 bucket name and the S3 prefix for the specific meeting you want to transcribe.
+
+Step 1: Identify Bucket and Prefix
+
+Your Bucket Name might be something like lhl-s3-a544-aipage-bbh.
+
+The S3 Prefix is the "folder path" leading up to the audio chunks, for example, meeting-audio/meeting-to/AI_Ipay.
+
+Step 2: Run the Docker Command
+You will use docker compose run and pass the bucket name as an environment variable (-e) and the prefix as a command-line argument.
+
+Here is the template:
+
+code
+Bash
+download
+content_copy
+expand_less
+docker compose run --rm \
+  -e S3_BUCKET="YOUR_BUCKET_NAME" \
+  finetuner python compare_concatenated.py "YOUR_S3_PREFIX"
+
+Example:
+Based on your previous logs, here is a concrete example.
+
+code
+Bash
+download
+content_copy
+expand_less
+docker compose run --rm \
+  -e S3_BUCKET="lhl-s3-a544-aipage-bbh" \
+  finetuner python compare_concatenated.py "meeting-audio/meeting-to/AI_Ipay"
+3. How to Interpret the Output
+
+The script will first log its progress as it finds, sorts, and downloads the chunks. The final output will be a clear comparison, perfect for evaluation:
+
+code
+Code
+download
+content_copy
+expand_less
+##############################
+###   MODEL COMPARISON   ###
+##############################
+
+For S3 Prefix: 'meeting-audio/meeting-to/AI_Ipay'
+
+[BASE MODEL TRANSCRIPTION]:
+    'xin chào và cảm ơn quý vị đã tham gia cuộc họp hôm nay chúng ta sẽ thảo luận về kết quả kinh doanh quý một'
+
+[FINE-TUNED MODEL TRANSCRIPTION]:
+    'xin chào và cảm ơn quý vị đã tham gia cuộc họp hôm nay chúng ta sẽ thảo luận về kết quả kinh doanh quý 1'
+
+This will allow you to see how each model performs on long, continuous audio and check if your fine-tuning has improved its ability to handle your specific domain, jargon, or formatting preferences (like writing numbers as digits instead of words).

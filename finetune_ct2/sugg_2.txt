@@ -19,7 +19,7 @@ logging.getLogger("botocore").setLevel(logging.ERROR)
 
 # --- Configuration Paths (Must match your training script) ---
 BASE_MODEL_PATH = "/app/model"
-FINETUNED_ADAPTER_PATH = "/app/outputs/vietbud500_adapter_final"
+FINETUNED_ADAPTER_PATH = "/app/outputs/20251103_adapter_final"
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
 
 # --- S3 Client Function ---

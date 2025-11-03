@@ -1,1 +1,82 @@
-pip install --upgrade torch transformers peft accelerate bitsandbytes
+def main():
+    # 1. Load Pre-processed Datasets from Disk
+    logging.info(f"Loading pre-processed training data from {PROCESSED_TRAIN_PATH}...")
+    train_dataset = load_from_disk(PROCESSED_TRAIN_PATH)
+    logging.info(f"Loading pre-processed validation data from {PROCESSED_VAL_PATH}...")
+    val_dataset = load_from_disk(PROCESSED_VAL_PATH)
+    logging.info("Datasets loaded successfully.")
+
+    # 2. Model Loading and Hybrid Fine-Tuning Setup
+    logging.info("Loading base model...")
+    model = WhisperForConditionalGeneration.from_pretrained(
+        BASE_MODEL_PATH, use_cache=False, torch_dtype=torch.bfloat16
+    )
+    
+    ### ================================================================== ###
+    ### CRITICAL FIX: Changed the order of operations.                     ###
+    ### Unfreeze the convolutional layers BEFORE preparing the model       ###
+    ### with PEFT. This allows PEFT to correctly handle the hybrid state.  ###
+    ### ================================================================== ###
+    logging.info("Unfreezing convolutional layers for hybrid fine-tuning...")
+    for name, param in model.named_parameters():
+        if 'conv1' in name or 'conv2' in name:
+            param.requires_grad = True
+
+    # Now, prepare the model. PEFT will see that the conv layers are trainable.
+    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False})
+    
+    logging.info("Applying LoRA adapter...")
+    model = PeftModel.from_pretrained(model, ADAPTER_TO_CONTINUE_FROM, is_trainable=True)
+            
+    model.print_trainable_parameters()
+
+    # 3. Training Arguments
+    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
+    has_bf16 = torch.cuda.is_bf16_supported()
+    training_args = Seq2SeqTrainingArguments(
+        output_dir=NEW_ADAPTER_SAVE_PATH,
+        # IMPORTANT: A MIG slice has less memory. Be ready to lower batch size.
+        per_device_train_batch_size=8,  # Starting lower as a precaution
+        gradient_accumulation_steps=8, # Increased to keep effective batch size of 64
+        learning_rate=5e-6,
+        warmup_steps=50,
+        num_train_epochs=5,
+        bf16=has_bf16,
+        fp16=not has_bf16,
+        optim="adamw_torch",
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=2,
+        logging_steps=10,
+        report_to=["tensorboard"],
+        load_best_model_at_end=True,
+        metric_for_best_model="wer",
+        greater_is_better=False,
+        dataloader_num_workers=4,
+        dataloader_pin_memory=False,
+        generation_max_length=448,
+    )
+
+    # 4. Initialize and Run Trainer
+    trainer = Seq2SeqTrainer(
+        args=training_args,
+        model=model,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        data_collator=data_collator,
+        compute_metrics=compute_metrics,
+        tokenizer=processor.feature_extractor,
+    )
+    
+    logging.info("Starting model training...")
+    trainer.train()
+
+    logging.info("Final evaluation on the best model:")
+    final_metrics = trainer.evaluate()
+    logging.info(f"Final WER: {final_metrics['eval_wer']:.4f}")
+
+    logging.info(f"Training complete. Best adapter saved to {NEW_ADAPTER_SAVE_PATH}")
+    trainer.save_model()
+
+if __name__ == "__main__":
+    main()

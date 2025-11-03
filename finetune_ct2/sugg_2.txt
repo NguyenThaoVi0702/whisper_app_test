@@ -1,13 +1,141 @@
-Transcribing with FINE-TUNED model...
-2025-11-03 07:47:44,741 - INFO - Generating transcription...
-2025-11-03 07:47:44,938 - ERROR - Failed to transcribe audio array: The length of `decoder_input_ids`, including special start tokens, prompt tokens, and previous tokens, is 3,  and `max_new_tokens` is 448. Thus, the combined length of `decoder_input_ids` and `max_new_tokens` is: 451. This exceeds the `max_target_positions` of the Whisper model: 448. You should either reduce the length of your prompt, or reduce the value of `max_new_tokens`, so that their combined length is less than 448.
-Traceback (most recent call last):
-  File "/app/compare_models.py", line 49, in transcribe_audio_array
-    predicted_ids = model.generate(
-  File "/usr/local/lib/python3.10/dist-packages/peft/peft_model.py", line 823, in generate
-    return self.get_base_model().generate(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 755, in generate
-    self._set_max_new_tokens_and_length(
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 1833, in _set_max_new_tokens_and_length
-    raise ValueError(
-ValueError: The length of `decoder_input_ids`, including special start tokens, prompt tokens, and previous tokens, is 3,  and `max_new_tokens` is 448. Thus, the combined length of `decoder_input_ids` and `max_new_tokens` is: 451. This exceeds the `max_target_positions` of the Whisper model: 448. You should either reduce the length of your prompt, or reduce the value of `max_new_tokens`, so that their combined length is less than 448.
+# compare_models_long_audio.py
+
+import os
+import io
+import logging
+import argparse
+
+import torch
+import librosa
+import boto3
+from transformers import WhisperProcessor, WhisperForConditionalGeneration, pipeline
+from peft import PeftModel
+
+# --- Basic Setup ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("boto3").setLevel(logging.ERROR)
+logging.getLogger("botocore").setLevel(logging.ERROR)
+
+# --- Configuration Paths ---
+BASE_MODEL_PATH = "/app/model"
+FINETUNED_ADAPTER_PATH = "/app/outputs/vietbud500_adapter_final"
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+
+# --- S3 Client Function ---
+def get_s3_client():
+    """Initializes and returns a boto3 S3 client using env vars."""
+    try:
+        return boto3.client(
+            "s3",
+            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("AWS_REGION"),
+        )
+    except Exception as e:
+        raise ConnectionError(f"Failed to create S3 client: {e}")
+
+def main(s3_object_key):
+    if not S3_BUCKET_NAME:
+        raise ValueError("The 'S3_BUCKET_NAME' environment variable is not set.")
+
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    model_dtype = torch.bfloat16
+    logging.info(f"Using device: {device} with dtype: {model_dtype}")
+
+    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+    
+    # --- Load Models (Separate instances) ---
+    logging.info("Loading base model and applying adapter for FINE-TUNED version...")
+    fine_tuned_model_for_pipeline = WhisperForConditionalGeneration.from_pretrained(
+        BASE_MODEL_PATH, torch_dtype=model_dtype
+    )
+    fine_tuned_model_for_pipeline = PeftModel.from_pretrained(fine_tuned_model_for_pipeline, FINETUNED_ADAPTER_PATH)
+
+    logging.info("Loading a fresh BASE model instance...")
+    base_model_for_pipeline = WhisperForConditionalGeneration.from_pretrained(
+        BASE_MODEL_PATH, torch_dtype=model_dtype
+    )
+    
+    ### ================================================================== ###
+    ###   CRITICAL FIX: Create separate 'pipeline' objects for each model.   ###
+    ###   This is the standard way to run long-form transcription.           ###
+    ### ================================================================== ###
+    
+    logging.info("Creating transcription pipeline for BASE model...")
+    base_pipeline = pipeline(
+        "automatic-speech-recognition",
+        model=base_model_for_pipeline,
+        tokenizer=processor.tokenizer,
+        feature_extractor=processor.feature_extractor,
+        torch_dtype=model_dtype,
+        device=device,
+    )
+
+    logging.info("Creating transcription pipeline for FINE-TUNED model...")
+    finetuned_pipeline = pipeline(
+        "automatic-speech-recognition",
+        model=fine_tuned_model_for_pipeline,
+        tokenizer=processor.tokenizer,
+        feature_extractor=processor.feature_extractor,
+        torch_dtype=model_dtype,
+        device=device,
+    )
+    
+    # --- Download Audio from S3 ---
+    logging.info(f"Attempting to download s3://{S3_BUCKET_NAME}/{s3_object_key}")
+    s3_client = get_s3_client()
+    try:
+        response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=s3_object_key)
+        audio_bytes = response['Body'].read()
+        # No need to load with librosa, the pipeline can take the raw bytes
+        logging.info("Audio downloaded successfully.")
+    except Exception as e:
+        logging.error(f"Failed to download audio from S3: {e}", exc_info=True)
+        return
+
+    # --- Run Inference using the Pipelines ---
+    # The pipeline handles chunking automatically.
+    # We add generate_kwargs to ensure the language is set correctly for each chunk.
+    generation_kwargs = {"language": "vi", "task": "transcribe"}
+
+    print("\n" + "="*80)
+    print("Transcribing with BASE model pipeline (this may take a while for long audio)...")
+    base_result = base_pipeline(
+        audio_bytes, 
+        chunk_length_s=30, 
+        generate_kwargs=generation_kwargs
+    )
+    base_transcription = base_result["text"]
+
+    print("\n" + "="*80)
+    print("Transcribing with FINE-TUNED model pipeline (this may take a while for long audio)...")
+    finetuned_result = finetuned_pipeline(
+        audio_bytes, 
+        chunk_length_s=30, 
+        generate_kwargs=generation_kwargs
+    )
+    finetuned_transcription = finetuned_result["text"]
+    
+    # --- Display Final Comparison ---
+    print("\n" + "#"*30)
+    print("###   MODEL COMPARISON   ###")
+    print("#"*30)
+    
+    print(f"\nAudio Source: s3://{S3_BUCKET_NAME}/{s3_object_key}")
+    
+    print("\n[BASE MODEL TRANSCRIPTION]:")
+    print(f"    '{base_transcription}'")
+
+    print("\n[FINE-TUNED MODEL TRANSCRIPTION]:")
+    print(f"    '{finetuned_transcription}'")
+    print("\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Compare base and fine-tuned Whisper model transcriptions on long audio from S3.")
+    parser.add_argument("s3_key", type=str, help="The S3 object key (e.g., 'path/to/my_long_audio.wav') of the audio file.")
+    args = parser.parse_args()
+    
+    main(args.s3_key)

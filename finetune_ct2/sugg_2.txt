@@ -1,42 +1,41 @@
+
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ docker compose logs -f
+WARN[0000] The "HOST_UID" variable is not set. Defaulting to a blank string.
+WARN[0000] The "HOST_GID" variable is not set. Defaulting to a blank string.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | ==========
+lora-finetuning-job-s3  | == CUDA ==
+lora-finetuning-job-s3  | ==========
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | CUDA Version 12.0.1
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+lora-finetuning-job-s3  | By pulling and using the container, you accept the terms and conditions of this license:
+lora-finetuning-job-s3  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+lora-finetuning-job-s3  |
+lora-finetuning-job-s3  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+lora-finetuning-job-s3  |
 lora-finetuning-job-s3  | =========================================
 lora-finetuning-job-s3  |       STARTING FINE-TUNING PIPELINE
 lora-finetuning-job-s3  | =========================================
 lora-finetuning-job-s3  |
 lora-finetuning-job-s3  | --- Step 1: Preparing Data (Downloading, Augmenting, Caching) ---
-lora-finetuning-job-s3  | 2025-11-03 01:40:14,534 - INFO - Pre-processed data already found on disk. Skipping data preparation.
+lora-finetuning-job-s3  | 2025-11-03 01:59:23,972 - INFO - Pre-processed data already found on disk. Skipping data preparation.
 lora-finetuning-job-s3  |
 lora-finetuning-job-s3  | --- Step 2: Training Model (Loading Cached Data & Fine-Tuning) ---
-lora-finetuning-job-s3  | 2025-11-03 01:40:19,775 - INFO - Loading Whisper processor...
-lora-finetuning-job-s3  | 2025-11-03 01:40:20,144 - INFO - Loading pre-processed training data from /app/processed_data/train...
-lora-finetuning-job-s3  | 2025-11-03 01:40:20,151 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
-lora-finetuning-job-s3  | 2025-11-03 01:40:20,153 - INFO - Datasets loaded successfully.
-lora-finetuning-job-s3  | 2025-11-03 01:40:20,153 - INFO - Loading base model...
-lora-finetuning-job-s3  | 2025-11-03 01:40:20,768 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
-lora-finetuning-job-s3  | 2025-11-03 01:40:20,965 - INFO - Applying LoRA adapter...
-lora-finetuning-job-s3  | /app/train_model.py:120: FutureWarning: `tokenizer` is deprecated and will be removed in version 5.0.0 for `Seq2SeqTrainer.__init__`. Use `processing_class` instead.
+lora-finetuning-job-s3  | 2025-11-03 01:59:29,117 - INFO - Loading Whisper processor...
+lora-finetuning-job-s3  | 2025-11-03 01:59:29,471 - INFO - Loading pre-processed training data from /app/processed_data/train...
+lora-finetuning-job-s3  | 2025-11-03 01:59:29,480 - INFO - Loading pre-processed validation data from /app/processed_data/validation...
+lora-finetuning-job-s3  | 2025-11-03 01:59:29,482 - INFO - Datasets loaded successfully.
+lora-finetuning-job-s3  | 2025-11-03 01:59:29,482 - INFO - Loading base model...
+lora-finetuning-job-s3  | 2025-11-03 01:59:30,072 - INFO - Unfreezing convolutional layers for hybrid fine-tuning...
+lora-finetuning-job-s3  | 2025-11-03 01:59:30,247 - INFO - Applying LoRA adapter...
+lora-finetuning-job-s3  | /app/train_model.py:121: FutureWarning: `tokenizer` is deprecated and will be removed in version 5.0.0 for `Seq2SeqTrainer.__init__`. Use `processing_class` instead.
 lora-finetuning-job-s3  |   trainer = Seq2SeqTrainer(
-lora-finetuning-job-s3  | 2025-11-03 01:40:22,302 - INFO - Starting model training...
+lora-finetuning-job-s3  | 2025-11-03 01:59:31,823 - INFO - Starting model training...
 lora-finetuning-job-s3  | trainable params: 6,553,600 || all params: 815,431,680 || trainable%: 0.8037
-lora-finetuning-job-s3  | {'eval_runtime': 9.6749, 'eval_samples_per_second': 4.134, 'eval_steps_per_second': 0.517, 'epoch': 0.8888888888888888}
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3165, in _determine_best_metric
-lora-finetuning-job-s3  |     metric_value = metrics[metric_to_check]
-lora-finetuning-job-s3  | KeyError: 'eval_wer'
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | The above exception was the direct cause of the following exception:
-lora-finetuning-job-s3  |
-lora-finetuning-job-s3  | Traceback (most recent call last):
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 141, in <module>
-lora-finetuning-job-s3  |     main()
-lora-finetuning-job-s3  |   File "/app/train_model.py", line 131, in main
-lora-finetuning-job-s3  |     trainer.train()
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2245, in train
-lora-finetuning-job-s3  |     return inner_training_loop(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 2661, in _inner_training_loop
-lora-finetuning-job-s3  |     self._maybe_log_save_evaluate(
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3097, in _maybe_log_save_evaluate
-lora-finetuning-job-s3  |     is_new_best_metric = self._determine_best_metric(metrics=metrics, trial=trial)
-lora-finetuning-job-s3  |   File "/usr/local/lib/python3.10/dist-packages/transformers/trainer.py", line 3167, in _determine_best_metric
-lora-finetuning-job-s3  |     raise KeyError(
-lora-finetuning-job-s3  | KeyError: "The `metric_for_best_model` training argument is set to 'eval_wer', which is not found in the evaluation metrics. The available evaluation metrics are: ['eval_runtime', 'eval_samples_per_second', 'eval_steps_per_second', 'epoch']. Consider changing the `metric_for_best_model` via the TrainingArguments."
-lora-finetuning-job-s3 exited with code 1
+lora-finetuning-job-s3  | {'eval_loss': 2.334296703338623, 'eval_wer': 0.9328318108543794, 'eval_runtime': 236.2785, 'eval_samples_per_second': 0.169, 'eval_steps_per_second': 0.021, 'epoch': 0.8888888888888888}
+lora-finetuning-job-s3  | {'loss': 2.4103, 'grad_norm': 5.5810675621032715, 'learning_rate': 9.000000000000001e-07, 'epoch': 1.8888888888888888}
+lora-finetuning-job-s3  | {'eval_loss': 2.3260066509246826, 'eval_wer': 0.9355185384202042, 'eval_runtime': 235.8254, 'eval_samples_per_second': 0.17, 'eval_steps_per_second': 0.021, 'epoch': 1.8888888888888888}

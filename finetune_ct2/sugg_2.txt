@@ -1,102 +1,10 @@
-Of course. A Word Error Rate (WER) of 0.89 is a clear sign that there is a fundamental disconnect between the data being fed to the model and what it expects. This is not a hyperparameter issue; it is a data pipeline issue.
+Of course. This is the perfect next step for debugging. By comparing the outputs of the base model, your prepared labels, and your original labels, you will see exactly where the discrepancies are.
 
-After a thorough review of your prepare_data.py script, I have identified the most likely cause and several other areas for significant improvement.
+Here is the code for the data checking script and a detailed guide on how to run it as a one-off command with Docker Compose.
 
-The core problem is almost certainly a lack of text normalization.
+1. The Data Checking Script
 
-The Core Problem: Text Normalization
-
-The Whisper model was pre-trained on a massive dataset where the transcription text was heavily cleaned and normalized. This typically includes:
-
-Converting all text to lowercase.
-
-Removing all punctuation (commas, periods, question marks, etc.).
-
-Spelling out numbers (e.g., "100" -> "one hundred").
-
-Removing special characters and symbols.
-
-Your script takes the raw transcription text directly from your annotations and tokenizes it:
-batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
-
-If your transcriptions contain any casing, punctuation, or other characters the model didn't frequently see during pre-training, it creates a vocabulary mismatch. The model is being penalized for predicting "hello world" when the label is "Hello, world.", leading to a catastrophic WER.
-
-Action Plan to Drastically Improve Your WER
-
-Follow these steps in order. Step 1 is mandatory and will likely provide the biggest improvement.
-
-Step 1: Implement Aggressive Text Normalization (Highest Priority)
-
-You must clean your transcriptions before tokenizing them. Let's create a normalization function and insert it into your processing pipeline.
-
-1. Add a Normalization Function:
-Create a function that converts text to lowercase and removes all characters except for Vietnamese letters and spaces.
-
-code
-Python
-download
-content_copy
-expand_less
-# Add this function near the top of your prepare_data.py script
-import re
-
-# This regex keeps only lowercase Vietnamese letters and spaces.
-# It will remove punctuation, numbers, and other symbols.
-vietnamese_chars = "a-zàáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữự"
-def normalize_transcription(text):
-    text = text.lower()
-    text = re.sub(f'[^{vietnamese_chars}\s]', '', text)
-    # Collapse multiple spaces into one
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
-
-2. Modify Your process_and_tokenize_audio Function:
-Apply this normalization function right before you tokenize the labels.
-
-code
-Python
-download
-content_copy
-expand_less
-def process_and_tokenize_audio(batch, processor, tracker, is_training=False):
-    """Downloads, processes, tokenizes audio, and updates progress."""
-    global s3_client 
-    if s3_client is None:
-        s3_client = get_s3_client_for_worker()
-        
-    s3_uri = batch["audio_path"]
-    bucket = s3_uri.split('/')[2]
-    key = '/'.join(s3_uri.split('/')[3:])
-    try:
-        response = s3_client.get_object(Bucket=bucket, Key=key)
-        audio_bytes = response['Body'].read()
-        audio_array, _ = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
-        
-        if is_training:
-            audio_array = augment_pipeline(samples=audio_array, sample_rate=16000)
-            
-        batch["input_features"] = processor.feature_extractor(audio_array, sampling_rate=16000).input_features[0]
-        
-        ### ================================================================== ###
-        ### CRITICAL FIX: Normalize the transcription before tokenizing.       ###
-        ### ================================================================== ###
-        normalized_text = normalize_transcription(batch["transcription"])
-        batch["labels"] = processor.tokenizer(normalized_text).input_ids
-        
-        tracker.increment()
-        return batch
-    except Exception as e:
-        logging.error(f"Failed to process {s3_uri}: {e}")
-        # Return a structure that can be filtered out later if needed
-        return None
-
-After making this change, you will need to delete your old processed data cache (/app/processed_data) and re-run prepare_data.py. Then, re-run your training.
-
-Step 2: Manually Verify Data Quality
-
-A WER of 0.89 could also mean some of your audio files are mismatched with their transcriptions. You must perform a manual sanity check.
-
-Create a small script to load a few examples from your processed dataset, listen to the audio, and print the normalized transcription.
+Save the following code into a new file named check_data.py in the same directory as your docker-compose.yml file.
 
 code
 Python
@@ -104,88 +12,207 @@ download
 content_copy
 expand_less
 # check_data.py
-from datasets import load_from_disk
-import soundfile as sf
+
+import os
+import json
+import io
+import logging
+import re
 import random
 
-PROCESSED_TRAIN_PATH = "./processed_data/train" # Adjust path as needed
+import boto3
+import torch
+import librosa
+from datasets import load_from_disk, Dataset
+from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
-# Load the processed dataset
-dataset = load_from_disk(PROCESSED_TRAIN_PATH)
-processor = WhisperProcessor.from_pretrained("./model", language="vi", task="transcribe")
+# --- Basic Setup ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Suppress noisy warnings from other libraries
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("boto3").setLevel(logging.ERROR)
+logging.getLogger("botocore").setLevel(logging.ERROR)
 
-for _ in range(5): # Check 5 random samples
-    random_idx = random.randint(0, len(dataset) - 1)
-    sample = dataset[random_idx]
-    
-    # Decode the labels back to text
-    transcription = processor.tokenizer.decode(sample["labels"], skip_special_tokens=True)
-    
-    # The input_features are just a list, we can't directly play it back.
-    # This check is primarily for the text.
-    print("-" * 50)
-    print(f"Sample Index: {random_idx}")
-    print(f"Normalized Transcription: '{transcription}'")
-    print("-" * 50)
+# --- Configuration Paths (Must match your other scripts) ---
+ANNOTATIONS_FILE_IN_CONTAINER = "/app/annotations.json"
+BASE_MODEL_PATH = "./model"
+PROCESSED_TRAIN_PATH = "/app/processed_data/train"
 
-# This will show you what the model is actually seeing as the ground truth.
-# Does it look like clean, correct Vietnamese?
+# --- S3 Client Function (Copied from prepare_data.py) ---
+def get_s3_client():
+    """Initializes and returns a boto3 S3 client."""
+    try:
+        return boto3.client(
+            "s3",
+            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("AWS_REGION"),
+        )
+    except Exception as e:
+        raise ConnectionError(f"Failed to create S3 client: {e}")
 
-This check will confirm that your normalization is working and that the text itself is reasonable.
+# --- Data Loading Function (Copied from prepare_data.py) ---
+def load_and_parse_annotations(annotations_path):
+    with open(annotations_path, 'r', encoding='utf-8') as f:
+        annotations = json.load(f)
+    data = {"audio_path": [], "transcription": []}
+    for task in annotations:
+        s3_uri = task.get("data", {}).get("audio")
+        if not s3_uri: continue
+        segments = []
+        if task.get("annotations"):
+            for result in task["annotations"][0].get("result", []):
+                if result.get("from_name") == "transcription":
+                    start_time = result.get("value", {}).get("start", 0)
+                    text = " ".join(result.get("value", {}).get("text", [])).strip()
+                    label = "unknown"
+                    for label_result in task["annotations"][0].get("result", []):
+                        if label_result.get("id") == result.get("id") and label_result.get("from_name") == "label":
+                           label = " ".join(label_result.get("value",{}).get("labels",[]))
+                           break
+                    if "noise" not in label.lower() and text:
+                        segments.append((start_time, text))
+        if not segments: continue
+        segments.sort(key=lambda x: x[0])
+        full_transcription = " ".join([text for _, text in segments])
+        data["audio_path"].append(s3_uri)
+        data["transcription"].append(full_transcription)
+    return Dataset.from_dict(data)
 
-Step 3: Tune Hyperparameters for Better Performance
+def main():
+    """
+    Loads 5 random samples, compares the original label, the processed label,
+    and a fresh transcription from the base model.
+    """
+    try:
+        s3_client = get_s3_client()
+        
+        logging.info("Loading base model and processor...")
+        processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
+        model = WhisperForConditionalGeneration.from_pretrained(BASE_MODEL_PATH, torch_dtype=torch.bfloat16)
+        
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model.to(device)
+        logging.info(f"Model loaded onto device: {device}")
 
-Now that your data is clean, you can focus on training better. A WER of 0.89 means your previous training run was essentially learning garbage. With clean data, these changes will now have a real impact.
+        logging.info("Loading processed and raw datasets...")
+        # Load the dataset that the model was actually trained on
+        train_dataset_processed = load_from_disk(PROCESSED_TRAIN_PATH)
 
-Increase the Learning Rate: 5e-6 is quite low for LoRA. A common and effective learning rate for LoRA fine-tuning is 1e-4. This will help the model learn much faster.
+        # Load the raw dataset and perform the same split to align the samples
+        raw_dataset = load_and_parse_annotations(ANNOTATIONS_FILE_IN_CONTAINER)
+        dataset_dict = raw_dataset.train_test_split(test_size=0.1, seed=42)
+        train_dataset_raw = dataset_dict["train"]
+        
+        logging.info(f"Checking {min(5, len(train_dataset_processed))} random samples...")
+        
+        # Get 5 unique random indices
+        random_indices = random.sample(range(len(train_dataset_processed)), k=min(5, len(train_dataset_processed)))
 
-Re-enable Gradient Checkpointing & Increase Batch Size: Your model is stable now. You should re-enable gradient checkpointing to save VRAM, which will allow you to use a larger batch size. A larger batch size often leads to more stable training and better results.
+        for i, idx in enumerate(random_indices):
+            print("\n" + "="*80)
+            print(f"SAMPLE {i+1}/{len(random_indices)} (Dataset Index: {idx})")
+            print("="*80)
 
-Changes in train_model.py:
+            # --- 1. Get data from your processed and raw datasets ---
+            processed_sample = train_dataset_processed[idx]
+            raw_sample = train_dataset_raw[idx]
+            
+            s3_uri = raw_sample["audio_path"]
+            
+            # Decode the label that your model was trained on
+            normalized_label = processor.tokenizer.decode(processed_sample['labels'], skip_special_tokens=True)
+            
+            # Get the original, un-normalized label
+            original_label = raw_sample['transcription']
+            
+            # --- 2. Download audio and run inference with the base model ---
+            logging.info(f"Downloading and transcribing audio from {s3_uri}...")
+            bucket = s3_uri.split('/')[2]
+            key = '/'.join(s3_uri.split('/')[3:])
+            
+            response = s3_client.get_object(Bucket=bucket, Key=key)
+            audio_bytes = response['Body'].read()
+            audio_array, _ = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+
+            input_features = processor(audio_array, sampling_rate=16000, return_tensors="pt").input_features
+            predicted_ids = model.generate(input_features.to(device))
+            base_model_transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+
+            # --- 3. Print the comparison ---
+            print(f"\n[A] BASE MODEL'S GUESS (Inference):")
+            print(f"    '{base_model_transcription}'")
+            
+            print(f"\n[B] YOUR PROCESSED LABEL (What your model was trained on):")
+            print(f"    '{normalized_label}'")
+
+            print(f"\n[C] YOUR ORIGINAL LABEL (From annotations.json):")
+            print(f"    '{original_label}'")
+            
+    except Exception as e:
+        logging.error(f"An error occurred: {e}", exc_info=True)
+
+if __name__ == "__main__":
+    main()```
+
+### 2. How to Run the Script
+
+You can run this new script inside a new container using your existing `finetuner` service definition without modifying `docker-compose.yml` at all. The command for this is `docker compose run`.
+
+**Step 1: Save the File**
+Make sure the code above is saved as `check_data.py` in your project's root directory.
+
+**Step 2: Run the Command**
+Open your terminal in the same directory and execute the following command:
+
+```bash
+docker compose run --rm finetuner python check_data.py
+
+How this command works:
+
+docker compose run: Starts a new, one-off container for a service.
+
+--rm: Automatically removes the container after the script finishes, keeping your system clean.
+
+finetuner: The name of the service from your docker-compose.yml. This tells Docker to use the same image, volumes, environment variables, and GPU settings defined for that service.
+
+python check_data.py: This is the command that will be executed inside the new container, overriding the default command: /bin/bash run_pipeline.sh.
+
+3. How to Interpret the Output
+
+You will see output for 5 random samples, each formatted like this:
 
 code
-Python
+Code
 download
 content_copy
 expand_less
-# In main()
+================================================================================
+SAMPLE 1/5 (Dataset Index: 1234)
+================================================================================
 
-# Re-enable gradient checkpointing
-model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+[A] BASE MODEL'S GUESS (Inference):
+    'xin chào thế giới'
 
-# ... inside Seq2SeqTrainingArguments ...
-training_args = Seq2SeqTrainingArguments(
-    # ...
-    per_device_train_batch_size=16, # Increase batch size back up
-    gradient_accumulation_steps=4,  # Adjust to keep effective batch size high
-    learning_rate=1e-4,             # <-- INCREASED LEARNING RATE
-    # ...
-)```
+[B] YOUR PROCESSED LABEL (What your model was trained on):
+    'xin chào thế giới'
 
-#### Step 4: Temporarily Disable Augmentation
+[C] YOUR ORIGINAL LABEL (From annotations.json):
+    'Xin chào, Thế Giới.'
 
-Your augmentation pipeline seems reasonable, but as a debugging step, it's wise to eliminate variables. Try one training run with **no data augmentation** to establish a baseline.
+Analyze the differences:
 
-**Change in `prepare_data.py`:**
-Simply comment out the augmentation line in `process_and_tokenize_audio`:
-```python
-# ...
-# if is_training:
-#     audio_array = augment_pipeline(samples=audio_array, sample_rate=16000) # <-- Comment this out
-# ...
+Compare (A) and (B):
 
-If your performance is much better without augmentation, it might indicate that the base audio quality is low and the augmentations are making it unintelligible. If the performance is similar, you can re-enable it.
+If they are very different: It could mean the base audio quality is poor or the domain is very different from Whisper's pre-training data.
 
-Summary of Actions
+If they are similar: This is a good sign! It means the base model can already understand your audio well.
 
-Fix Normalization (Most Important): Add the normalize_transcription function to prepare_data.py and use it.
+Compare (B) and (C):
 
-Delete Cache & Re-process Data: Remove the old /app/processed_data directory and run the updated preparation script.
+This is the most important comparison. It shows the effect of your normalization. You should see [C] having punctuation and capitalization, while [B] is clean, lowercase, and free of symbols.
 
-Verify Data: Use the checking script to ensure your processed labels are clean and make sense.
+If [B] and [C] are identical (e.g., both have punctuation), your normalization fix was not applied correctly.
 
-Tune Training: Increase the learning rate to 1e-4 and re-enable gradient checkpointing in train_model.py to use a larger batch size.
-
-Re-train the model.
-
-Following these steps, especially the text normalization, should result in a dramatic and immediate improvement in your Word Error Rate.
+Overall Picture: Your goal is to make [B] (your processed label) a clean, accurate, and normalized version of the spoken audio. The closer [B] is to a perfect transcription, the better your fine-tuned model will be. This script gives you the exact insight you need to verify that critical step.

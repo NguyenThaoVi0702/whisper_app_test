@@ -1,47 +1,50 @@
+ai_dev@ppe-nvidia-k8s-worker01:/u01/user-data/vint1/finetunning_20251031$ ./run_compose.sh
+Recreating 6768b47aa8fb_lora-finetuning-job-s3 ... 
 
-2025-11-03 03:34:58,517 - INFO - Loading base model and processor...
-2025-11-03 03:35:00,061 - INFO - Model loaded onto device: cuda
-2025-11-03 03:35:00,061 - INFO - Loading processed and raw datasets...
-2025-11-03 03:35:00,093 - INFO - Checking 5 random samples...
+ERROR: for 6768b47aa8fb_lora-finetuning-job-s3  'ContainerConfig'
 
-================================================================================
-SAMPLE 1/5 (Dataset Index: 323)
-================================================================================
-2025-11-03 03:35:00,286 - INFO - Downloading and transcribing audio from s3://lhl-s3-a544-aipage-bbh/hist-audio/labeling-data/AI Ipay_190.wav...
-2025-11-03 03:35:01,242 - ERROR - An error occurred: Input type (float) and bias type (c10::BFloat16) should be the same
+ERROR: for finetuner  'ContainerConfig'
 Traceback (most recent call last):
-  File "/app/check_data.py", line 125, in main
-    predicted_ids = model.generate(input_features.to(device))
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 619, in generate
-    init_tokens = self._retrieve_init_tokens(
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 1470, in _retrieve_init_tokens
-    lang_ids = self.detect_language(
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/generation_whisper.py", line 1574, in detect_language
-    logits = self(**inputs, decoder_input_ids=decoder_input_ids, use_cache=False).logits[:, -1]
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1776, in forward
-    outputs = self.model(
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1627, in forward
-    encoder_outputs = self.encoder(
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/transformers/models/whisper/modeling_whisper.py", line 1029, in forward
-    inputs_embeds = nn.functional.gelu(self.conv1(input_features))
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-    return forward_call(*args, **kwargs)
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/conv.py", line 375, in forward
-    return self._conv_forward(input, self.weight, self.bias)
-  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/conv.py", line 370, in _conv_forward
-    return F.conv1d(
-RuntimeError: Input type (float) and bias type (c10::BFloat16) should be the same
+  File "/usr/bin/docker-compose", line 33, in <module>
+    sys.exit(load_entry_point('docker-compose==1.29.2', 'console_scripts', 'docker-compose')())
+  File "/usr/lib/python3/dist-packages/compose/cli/main.py", line 81, in main
+    command_func()
+  File "/usr/lib/python3/dist-packages/compose/cli/main.py", line 203, in perform_command
+    handler(command, command_options)
+  File "/usr/lib/python3/dist-packages/compose/metrics/decorator.py", line 18, in wrapper
+    result = fn(*args, **kwargs)
+  File "/usr/lib/python3/dist-packages/compose/cli/main.py", line 1186, in up
+    to_attach = up(False)
+  File "/usr/lib/python3/dist-packages/compose/cli/main.py", line 1166, in up
+    return self.project.up(
+  File "/usr/lib/python3/dist-packages/compose/project.py", line 697, in up
+    results, errors = parallel.parallel_execute(
+  File "/usr/lib/python3/dist-packages/compose/parallel.py", line 108, in parallel_execute
+    raise error_to_reraise
+  File "/usr/lib/python3/dist-packages/compose/parallel.py", line 206, in producer
+    result = func(obj)
+  File "/usr/lib/python3/dist-packages/compose/project.py", line 679, in do
+    return service.execute_convergence_plan(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 579, in execute_convergence_plan
+    return self._execute_convergence_recreate(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 499, in _execute_convergence_recreate
+    containers, errors = parallel_execute(
+  File "/usr/lib/python3/dist-packages/compose/parallel.py", line 108, in parallel_execute
+    raise error_to_reraise
+  File "/usr/lib/python3/dist-packages/compose/parallel.py", line 206, in producer
+    result = func(obj)
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 494, in recreate
+    return self.recreate_container(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 612, in recreate_container
+    new_container = self.create_container(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 330, in create_container
+    container_options = self._get_container_create_options(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 921, in _get_container_create_options
+    container_options, override_options = self._build_container_volume_options(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 960, in _build_container_volume_options
+    binds, affinity = merge_volume_bindings(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 1548, in merge_volume_bindings
+    old_volumes, old_mounts = get_container_data_volumes(
+  File "/usr/lib/python3/dist-packages/compose/service.py", line 1579, in get_container_data_volumes
+    container.image_config['ContainerConfig'].get('Volumes') or {}
+KeyError: 'ContainerConfig'

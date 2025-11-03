@@ -39,3 +39,7 @@ lora-finetuning-job-s3  | trainable params: 6,553,600 || all params: 815,431,680
 lora-finetuning-job-s3  | {'eval_loss': 2.334296703338623, 'eval_wer': 0.9328318108543794, 'eval_runtime': 236.2785, 'eval_samples_per_second': 0.169, 'eval_steps_per_second': 0.021, 'epoch': 0.8888888888888888}
 lora-finetuning-job-s3  | {'loss': 2.4103, 'grad_norm': 5.5810675621032715, 'learning_rate': 9.000000000000001e-07, 'epoch': 1.8888888888888888}
 lora-finetuning-job-s3  | {'eval_loss': 2.3260066509246826, 'eval_wer': 0.9355185384202042, 'eval_runtime': 235.8254, 'eval_samples_per_second': 0.17, 'eval_steps_per_second': 0.021, 'epoch': 1.8888888888888888}
+lora-finetuning-job-s3  | {'eval_loss': 2.3114371299743652, 'eval_wer': 0.922622246104245, 'eval_runtime': 234.8325, 'eval_samples_per_second': 0.17, 'eval_steps_per_second': 0.021, 'epoch': 2.888888888888889}
+lora-finetuning-job-s3  | {'loss': 2.4525, 'grad_norm': 5.223830223083496, 'learning_rate': 1.9000000000000002e-06, 'epoch': 3.888888888888889}
+lora-finetuning-job-s3  | {'eval_loss': 2.2903552055358887, 'eval_wer': 0.9038151531434713, 'eval_runtime': 235.6615, 'eval_samples_per_second': 0.17, 'eval_steps_per_second': 0.021, 'epoch': 3.888888888888889}
+

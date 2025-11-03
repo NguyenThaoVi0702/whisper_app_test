@@ -1,102 +1,63 @@
-# prepare_data.py
+Of course. A Word Error Rate (WER) of 0.89 is a clear sign that there is a fundamental disconnect between the data being fed to the model and what it expects. This is not a hyperparameter issue; it is a data pipeline issue.
 
-import os
-import json
-import io
-import logging
-import threading
+After a thorough review of your prepare_data.py script, I have identified the most likely cause and several other areas for significant improvement.
 
-import boto3
-import librosa
-from datasets import Dataset
-from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, Gain
-from transformers import WhisperProcessor
+The core problem is almost certainly a lack of text normalization.
 
-# --- Basic Setup ---
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+The Core Problem: Text Normalization
 
-# --- Configuration Paths ---
-ANNOTATIONS_FILE_IN_CONTAINER = "/app/annotations.json"
-BASE_MODEL_PATH = "./model"
-PROCESSED_TRAIN_PATH = "/app/processed_data/train"
-PROCESSED_VAL_PATH = "/app/processed_data/validation"
+The Whisper model was pre-trained on a massive dataset where the transcription text was heavily cleaned and normalized. This typically includes:
 
-s3_client = None
+Converting all text to lowercase.
 
+Removing all punctuation (commas, periods, question marks, etc.).
 
-def get_s3_client_for_worker():
-    """Initializes and returns a boto3 S3 client for a single worker process."""
-    try:
-        client = boto3.client(
-            "s3",
-            endpoint_url=os.environ.get("S3_ENDPOINT_URL"),
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.environ.get("AWS_REGION"),
-        )
-        return client
-    except Exception as e:
-        raise ConnectionError(f"Worker process failed to create S3 client: {e}")
+Spelling out numbers (e.g., "100" -> "one hundred").
 
-# --- Data Loading and Parsing ---
-def load_and_parse_annotations(annotations_path):
-    logging.info(f"Loading and parsing annotations from {annotations_path}...")
-    with open(annotations_path, 'r', encoding='utf-8') as f:
-        annotations = json.load(f)
-    data = {"audio_path": [], "transcription": []}
-    skipped_count = 0
-    for task in annotations:
-        s3_uri = task.get("data", {}).get("audio")
-        if not s3_uri:
-            skipped_count += 1
-            continue
-        segments = []
-        if task.get("annotations"):
-            for result in task["annotations"][0].get("result", []):
-                if result.get("from_name") == "transcription":
-                    start_time = result.get("value", {}).get("start", 0)
-                    text = " ".join(result.get("value", {}).get("text", [])).strip()
-                    label = "unknown"
-                    for label_result in task["annotations"][0].get("result", []):
-                        if label_result.get("id") == result.get("id") and label_result.get("from_name") == "label":
-                           label = " ".join(label_result.get("value",{}).get("labels",[]))
-                           break
-                    if "noise" not in label.lower() and text:
-                        segments.append((start_time, text))
-        if not segments:
-            skipped_count += 1
-            continue
-        segments.sort(key=lambda x: x[0])
-        full_transcription = " ".join([text for start_time, text in segments])
-        data["audio_path"].append(s3_uri)
-        data["transcription"].append(full_transcription)
-    if skipped_count > 0:
-        logging.warning(f"Skipped {skipped_count} tasks due to missing audio URI or transcriptions.")
-    logging.info(f"Successfully parsed {len(data['audio_path'])} valid data entries.")
-    return Dataset.from_dict(data)
+Removing special characters and symbols.
 
-# --- Data Augmentation ---
-augment_pipeline = Compose([
-    Gain(min_gain_db=-6, max_gain_db=6, p=0.3),
-    AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.3),
-    TimeStretch(min_rate=0.9, max_rate=1.1, p=0.2),
-    PitchShift(min_semitones=-2, max_semitones=2, p=0.2),
-])
+Your script takes the raw transcription text directly from your annotations and tokenizes it:
+batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
 
-# --- Progress Logging and Processing Function ---
-class ProgressTracker:
-    def __init__(self, total, name=""):
-        self.count = 0
-        self.total = total
-        self.name = name
-        self.lock = threading.Lock()
-    def increment(self):
-        with self.lock:
-            self.count += 1
-        if self.count % 10 == 0 or self.count == self.total:
-            logging.info(f"  --> [{self.name}] Processed {self.count}/{self.total} audio files...")
+If your transcriptions contain any casing, punctuation, or other characters the model didn't frequently see during pre-training, it creates a vocabulary mismatch. The model is being penalized for predicting "hello world" when the label is "Hello, world.", leading to a catastrophic WER.
 
+Action Plan to Drastically Improve Your WER
+
+Follow these steps in order. Step 1 is mandatory and will likely provide the biggest improvement.
+
+Step 1: Implement Aggressive Text Normalization (Highest Priority)
+
+You must clean your transcriptions before tokenizing them. Let's create a normalization function and insert it into your processing pipeline.
+
+1. Add a Normalization Function:
+Create a function that converts text to lowercase and removes all characters except for Vietnamese letters and spaces.
+
+code
+Python
+download
+content_copy
+expand_less
+# Add this function near the top of your prepare_data.py script
+import re
+
+# This regex keeps only lowercase Vietnamese letters and spaces.
+# It will remove punctuation, numbers, and other symbols.
+vietnamese_chars = "a-zàáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữự"
+def normalize_transcription(text):
+    text = text.lower()
+    text = re.sub(f'[^{vietnamese_chars}\s]', '', text)
+    # Collapse multiple spaces into one
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+2. Modify Your process_and_tokenize_audio Function:
+Apply this normalization function right before you tokenize the labels.
+
+code
+Python
+download
+content_copy
+expand_less
 def process_and_tokenize_audio(batch, processor, tracker, is_training=False):
     """Downloads, processes, tokenizes audio, and updates progress."""
     global s3_client 
@@ -110,46 +71,121 @@ def process_and_tokenize_audio(batch, processor, tracker, is_training=False):
         response = s3_client.get_object(Bucket=bucket, Key=key)
         audio_bytes = response['Body'].read()
         audio_array, _ = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+        
         if is_training:
             audio_array = augment_pipeline(samples=audio_array, sample_rate=16000)
+            
         batch["input_features"] = processor.feature_extractor(audio_array, sampling_rate=16000).input_features[0]
-        batch["labels"] = processor.tokenizer(batch["transcription"]).input_ids
+        
+        ### ================================================================== ###
+        ### CRITICAL FIX: Normalize the transcription before tokenizing.       ###
+        ### ================================================================== ###
+        normalized_text = normalize_transcription(batch["transcription"])
+        batch["labels"] = processor.tokenizer(normalized_text).input_ids
+        
         tracker.increment()
         return batch
     except Exception as e:
         logging.error(f"Failed to process {s3_uri}: {e}")
+        # Return a structure that can be filtered out later if needed
         return None
 
-def main():
-    if os.path.exists(PROCESSED_TRAIN_PATH) and os.path.exists(PROCESSED_VAL_PATH):
-        logging.info("Pre-processed data already found on disk. Skipping data preparation.")
-        return
-        
-    processor = WhisperProcessor.from_pretrained(BASE_MODEL_PATH, language="vi", task="transcribe")
-    raw_dataset = load_and_parse_annotations(ANNOTATIONS_FILE_IN_CONTAINER)
-    dataset_dict = raw_dataset.train_test_split(test_size=0.1, seed=42)
-    train_dataset_raw = dataset_dict["train"]
-    val_dataset_raw = dataset_dict["test"]
+After making this change, you will need to delete your old processed data cache (/app/processed_data) and re-run prepare_data.py. Then, re-run your training.
 
-    train_tracker = ProgressTracker(total=len(train_dataset_raw), name="Training")
-    val_tracker = ProgressTracker(total=len(val_dataset_raw), name="Validation")
+Step 2: Manually Verify Data Quality
 
-    logging.info(f"Processing {len(train_dataset_raw)} training samples with augmentation...")
-    train_dataset = train_dataset_raw.map(
-        lambda x: process_and_tokenize_audio(x, processor, train_tracker, is_training=True),
-        num_proc=4, remove_columns=train_dataset_raw.column_names
-    )
+A WER of 0.89 could also mean some of your audio files are mismatched with their transcriptions. You must perform a manual sanity check.
 
-    logging.info(f"Processing {len(val_dataset_raw)} validation samples...")
-    val_dataset = val_dataset_raw.map(
-        lambda x: process_and_tokenize_audio(x, processor, val_tracker, is_training=False),
-        num_proc=4, remove_columns=val_dataset_raw.column_names
-    )
+Create a small script to load a few examples from your processed dataset, listen to the audio, and print the normalized transcription.
+
+code
+Python
+download
+content_copy
+expand_less
+# check_data.py
+from datasets import load_from_disk
+import soundfile as sf
+import random
+
+PROCESSED_TRAIN_PATH = "./processed_data/train" # Adjust path as needed
+
+# Load the processed dataset
+dataset = load_from_disk(PROCESSED_TRAIN_PATH)
+processor = WhisperProcessor.from_pretrained("./model", language="vi", task="transcribe")
+
+for _ in range(5): # Check 5 random samples
+    random_idx = random.randint(0, len(dataset) - 1)
+    sample = dataset[random_idx]
     
-    logging.info("Saving processed datasets to disk for future runs...")
-    train_dataset.save_to_disk(PROCESSED_TRAIN_PATH)
-    val_dataset.save_to_disk(PROCESSED_VAL_PATH)
-    logging.info("Data preparation complete.")
+    # Decode the labels back to text
+    transcription = processor.tokenizer.decode(sample["labels"], skip_special_tokens=True)
+    
+    # The input_features are just a list, we can't directly play it back.
+    # This check is primarily for the text.
+    print("-" * 50)
+    print(f"Sample Index: {random_idx}")
+    print(f"Normalized Transcription: '{transcription}'")
+    print("-" * 50)
 
-if __name__ == "__main__":
-    main()
+# This will show you what the model is actually seeing as the ground truth.
+# Does it look like clean, correct Vietnamese?
+
+This check will confirm that your normalization is working and that the text itself is reasonable.
+
+Step 3: Tune Hyperparameters for Better Performance
+
+Now that your data is clean, you can focus on training better. A WER of 0.89 means your previous training run was essentially learning garbage. With clean data, these changes will now have a real impact.
+
+Increase the Learning Rate: 5e-6 is quite low for LoRA. A common and effective learning rate for LoRA fine-tuning is 1e-4. This will help the model learn much faster.
+
+Re-enable Gradient Checkpointing & Increase Batch Size: Your model is stable now. You should re-enable gradient checkpointing to save VRAM, which will allow you to use a larger batch size. A larger batch size often leads to more stable training and better results.
+
+Changes in train_model.py:
+
+code
+Python
+download
+content_copy
+expand_less
+# In main()
+
+# Re-enable gradient checkpointing
+model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+
+# ... inside Seq2SeqTrainingArguments ...
+training_args = Seq2SeqTrainingArguments(
+    # ...
+    per_device_train_batch_size=16, # Increase batch size back up
+    gradient_accumulation_steps=4,  # Adjust to keep effective batch size high
+    learning_rate=1e-4,             # <-- INCREASED LEARNING RATE
+    # ...
+)```
+
+#### Step 4: Temporarily Disable Augmentation
+
+Your augmentation pipeline seems reasonable, but as a debugging step, it's wise to eliminate variables. Try one training run with **no data augmentation** to establish a baseline.
+
+**Change in `prepare_data.py`:**
+Simply comment out the augmentation line in `process_and_tokenize_audio`:
+```python
+# ...
+# if is_training:
+#     audio_array = augment_pipeline(samples=audio_array, sample_rate=16000) # <-- Comment this out
+# ...
+
+If your performance is much better without augmentation, it might indicate that the base audio quality is low and the augmentations are making it unintelligible. If the performance is similar, you can re-enable it.
+
+Summary of Actions
+
+Fix Normalization (Most Important): Add the normalize_transcription function to prepare_data.py and use it.
+
+Delete Cache & Re-process Data: Remove the old /app/processed_data directory and run the updated preparation script.
+
+Verify Data: Use the checking script to ensure your processed labels are clean and make sense.
+
+Tune Training: Increase the learning rate to 1e-4 and re-enable gradient checkpointing in train_model.py to use a larger batch size.
+
+Re-train the model.
+
+Following these steps, especially the text normalization, should result in a dramatic and immediate improvement in your Word Error Rate.

@@ -21,9 +21,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Suppress noisy warnings from transformers
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
-# --- Configuration Paths (Must match your training script) ---
+# --- Configuration Paths---
 BASE_MODEL_PATH = "/app/model"
-FINETUNED_ADAPTER_PATH = "/app/outputs/vietbud500_adapter_final" # Path to your newly trained adapter
+FINETUNED_ADAPTER_PATH = "/app/outputs/20251103_adapter_final" 
 
 def transcribe_audio(model, processor, audio_path, device, model_dtype):
     """
